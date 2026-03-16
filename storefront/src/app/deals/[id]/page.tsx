@@ -205,13 +205,33 @@ export default function DealDetailPage() {
                                     </div>
 
                                     <button
-                                        disabled={deal.price <= 0}
+                                        disabled={deal.price <= 0 || (user && user.metadata?.kyc_status !== 'approved' && user.metadata?.kyc_status !== 'verified')}
                                         onClick={handleAddToCart}
                                         className="w-full py-5 rounded-2xl bg-primary text-white font-bold text-lg hover:shadow-2xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
                                     >
                                         <ShoppingCart className="h-6 w-6" />
-                                        {deal.price > 0 ? "Add to Cart" : "Price Unavailable"}
+                                        {deal.price > 0 ? "Buy Shares" : "Price Unavailable"}
                                     </button>
+
+                                    {user && user.metadata?.kyc_status !== 'approved' && user.metadata?.kyc_status !== 'verified' && (
+                                        <div className="mt-4 p-4 rounded-xl bg-orange-50 border border-orange-100 flex gap-3">
+                                            <Info className="h-5 w-5 text-orange-500 flex-shrink-0" />
+                                            <div>
+                                                <p className="text-sm font-bold text-orange-800">KYC Verification Required</p>
+                                                <p className="text-xs text-orange-700 mt-1">
+                                                    {user.metadata?.kyc_status === 'pending' || user.metadata?.kyc_status === 'submitted'
+                                                        ? "Your KYC verification is pending. You will be able to invest once it is approved."
+                                                        : user.metadata?.kyc_status === 'rejected'
+                                                        ? "Your KYC was rejected. Please update your details in the dashboard."
+                                                        : "Please complete your KYC in the dashboard to start investing."
+                                                    }
+                                                </p>
+                                                <Link href="/dashboard" className="text-xs font-bold text-primary hover:underline mt-2 inline-block">
+                                                    Go to Dashboard →
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="mt-6 flex items-start gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
                                         <Info className="h-5 w-5 text-slate-400 mt-0.5" />

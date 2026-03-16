@@ -32,10 +32,9 @@ class FileService {
             fs.mkdirSync(this.staticDir, { recursive: true });
         }
     }
-    async uploadLocal(file, userName, docType) {
-        const sanitizedName = userName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    async uploadLocal(file) {
         const extension = path.extname(file.originalname) || ".pdf";
-        const fileName = `${sanitizedName}_${docType}_${Date.now()}${extension}`;
+        const fileName = `${Date.now()}_${file.originalname}`;
         return await this.saveFile(file.buffer, fileName);
     }
     async saveFile(buffer, fileName) {
@@ -59,8 +58,8 @@ class PolemarchModuleService extends MedusaService({
     }
     
     // File Service methods proxy
-    async uploadLocal(file, userName, docType) {
-        return await this.fileService.uploadLocal(file, userName, docType);
+    async uploadLocal(file) {
+        return await this.fileService.uploadLocal(file);
     }
 }
 

@@ -21,18 +21,37 @@ export default class KycService {
 
     async verify(id: string) {
         const customer = await this.customerModule.retrieveCustomer(id);
-        return await this.customerModule.updateCustomers(id, {
+        const updatedCustomer = await this.customerModule.updateCustomers(id, {
             metadata: {
                 ...(customer.metadata || {}),
-                kyc_status: "verified",
+                kyc_status: "approved",
                 verified_at: new Date().toISOString()
             }
         });
+
+        // Add notification logic
+        try {
+            const polemarchModule = (this as any).customerModule.__container__.resolve("polemarch");
+            await polemarchModule.createNotifications({
+                customer_id: id,
+                title: "KYC Approved 🎉",
+                message: "Congratulations! Your KYC verification has been successfully approved. You can now start investing in Pre-IPO and unlisted shares on Polemarch.",
+                type: "kyc_approval"
+            });
+        } catch (e) {
+            console.error("Failed to create notification", e);
+        }
+
+        return updatedCustomer;
+    }
+
+    async approve(id: string) {
+        return this.verify(id);
     }
 
     async reject(id: string, reason: string) {
         const customer = await this.customerModule.retrieveCustomer(id);
-        return await this.customerModule.updateCustomers(id, {
+        const updatedCustomer = await this.customerModule.updateCustomers(id, {
             metadata: {
                 ...(customer.metadata || {}),
                 kyc_status: "rejected",
@@ -40,5 +59,20 @@ export default class KycService {
                 rejected_at: new Date().toISOString()
             }
         });
+
+        // Add notification for rejection
+        try {
+            const polemarchModule = (this as any).customerModule.__container__.resolve("polemarch");
+            await polemarchModule.createNotifications({
+                customer_id: id,
+                title: "KYC Rejected",
+                message: `Your KYC verification was rejected. Reason: ${reason}. Please re-submit with correct details.`,
+                type: "kyc_rejection"
+            });
+        } catch (e) {
+            console.error("Failed to create rejection notification", e);
+        }
+
+        return updatedCustomer;
     }
 }

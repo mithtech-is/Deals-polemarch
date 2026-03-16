@@ -4,23 +4,23 @@ export const PATCH = async (
   req: MedusaRequest,
   res: MedusaResponse
 ) => {
-  const customerId = (req as any).auth_context?.auth_metadata?.customer_id
+  const customerId = (req as any).auth_context?.app_metadata?.customer_id
   if (!customerId) {
     return res.status(401).json({ message: "Not authenticated" })
   }
 
   const { id } = req.params
-  const notificationModule = req.scope.resolve("notifications") as any
+  const polemarchModule = req.scope.resolve("polemarch") as any
 
-  const notification = await notificationModule.retrieveNotification(id)
+  const notification = await polemarchModule.retrieveNotification(id)
   
   if (notification.customer_id !== customerId) {
     return res.status(403).json({ message: "Unauthorized" })
   }
 
-  const updated = await notificationModule.updateNotifications({
+  const updated = await polemarchModule.updateNotifications({
     id,
-    read: true
+    is_read: true
   })
 
   res.json({ notification: updated })

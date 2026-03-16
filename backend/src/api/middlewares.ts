@@ -14,11 +14,6 @@ import InventoryValidationService from "../services/inventory-validation-service
 
 const upload = multer({ storage: multer.memoryStorage() })
 
-const UploadSchema = z.object({
-    userName: z.string().min(1),
-    docType: z.enum(["pan_card", "cmr_copy"]),
-})
-
 const authLimiter = rateLimit({
     windowMs: 60 * 1000, // 60 seconds
     max: 10, // Limit each IP to 10 requests per window
@@ -79,7 +74,6 @@ export default defineMiddlewares({
                     logger.info(`Multer processed. File present: ${!!(req as any).file}`);
                     next();
                 },
-                validateBody(UploadSchema),
             ],
         },
         {
@@ -165,7 +159,29 @@ export default defineMiddlewares({
             matcher: "/store/carts/:id/complete",
             method: "POST",
             middlewares: [
-                (req, res, next) => next()
+                async (req, res, next) => {
+                    const { id } = req.params;
+                    const cartModule = req.scope.resolve("cart") as any;
+                    const customerModule = req.scope.resolve("customer") as any;
+
+                    try {
+                        const cart = await cartModule.retrieveCart(id);
+                        if (cart.customer_id) {
+                            const customer = await customerModule.retrieveCustomer(cart.customer_id);
+                            const kycStatus = customer.metadata?.kyc_status;
+
+                            if (kycStatus !== "approved" && kycStatus !== "verified") {
+                                return res.status(403).json({
+                                    message: "KYC verification required. Your KYC status must be 'approved' to complete a purchase.",
+                                    kyc_status: kycStatus
+                                });
+                            }
+                        }
+                        next();
+                    } catch (error) {
+                        next();
+                    }
+                }
             ]
         }
     ],

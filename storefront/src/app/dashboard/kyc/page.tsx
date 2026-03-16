@@ -32,27 +32,42 @@ export default function KYCPage() {
         const fetchKycStatus = async () => {
             if (!user) return;
             try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'http://localhost:9000'}/store/kyc`, {
+                // Fetch customer data to get KYC status from metadata instead of admin route
+                const response = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'http://localhost:9000'}/store/customers/me`, {
                     headers: {
                         "Authorization": `Bearer ${localStorage.getItem("medusa_auth_token")}`,
                         "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || ""
                     }
                 });
+
+                if (!response.ok) {
+                    throw new Error("Failed to fetch customer data");
+                }
+
                 const data = await response.json();
-                if (data.kyc_request) {
-                    setKycData(data.kyc_request);
+                const metadata = data.customer?.metadata || {};
+
+                if (metadata.kyc_status) {
+                    setKycData({ status: metadata.kyc_status });
                     setFormData({
-                        panNumber: data.kyc_request.pan_number || "",
-                        aadhaarNumber: data.kyc_request.aadhaar_number || "",
+                        panNumber: metadata.kyc_pan_number || "",
+                        aadhaarNumber: metadata.kyc_aadhaar_number || "",
                         fullName: user.first_name + " " + (user.last_name || ""),
-                        dpName: data.kyc_request.dp_name || "",
-                        dematNumber: data.kyc_request.demat_number || "",
-                        panFileUrl: data.kyc_request.pan_file_url || "",
-                        cmrFileUrl: data.kyc_request.cmr_file_url || "",
+                        dpName: metadata.kyc_dp_name || "",
+                        dematNumber: metadata.kyc_demat_number || "",
+                        panFileUrl: metadata.kyc_pan_file_url || "",
+                        cmrFileUrl: metadata.kyc_cmr_file_url || "",
                     });
+                } else {
+                    // Set default name if no KYC data exists yet
+                    setFormData(prev => ({
+                        ...prev,
+                        fullName: user.first_name + " " + (user.last_name || ""),
+                    }));
                 }
             } catch (e) {
                 console.error("Failed to fetch KYC status", e);
+                // Don't crash, just let the user fill the form
             }
         };
         fetchKycStatus();
@@ -71,11 +86,11 @@ export default function KYCPage() {
     const validateFields = () => {
         const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
         if (!panRegex.test(formData.panNumber)) {
-            setError("Invalid PAN Format. Example: ABCDE1234F (10 characters)");
+            setError("Invalid PAN format. Example: ABCDE1234F");
             return false;
         }
 
-        const aadhaarRegex = /^[0-9]{12}$/;
+        const aadhaarRegex = /^\d{12}$/;
         if (!aadhaarRegex.test(formData.aadhaarNumber.replace(/\s/g, ""))) {
             setError("Invalid Aadhaar Number. Must be exactly 12 digits.");
             return false;
@@ -95,19 +110,24 @@ export default function KYCPage() {
         return true;
     };
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'pan' | 'cmr') => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, internalFileType: 'pan' | 'cmr') => {
         const file = e.target.files?.[0];
-        if (!file) return;
+        
+        // Defensive checks
+        if (!file) {
+            setError("Please select a file to upload.");
+            return;
+        }
 
-        setUploadingFile(type);
+        setUploadingFile(internalFileType);
         setError("");
 
-        const uploadData = new FormData();
-        uploadData.append("file", file);
-        uploadData.append("userName", formData.fullName || user?.email || "user");
-        uploadData.append("docType", type === 'pan' ? 'pan_card' : 'cmr_copy');
-
         try {
+            const uploadData = new FormData();
+            
+            // Backend now only requires key "file"
+            uploadData.append("file", file);
+
             const response = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'http://localhost:9000'}/store/upload`, {
                 method: "POST",
                 headers: {
@@ -120,18 +140,24 @@ export default function KYCPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || "Upload failed");
+                console.error("Upload response error:", data);
+                throw new Error(data.message || data.error || "Upload failed.");
+            }
+
+            if (!data.url) {
+                throw new Error("Upload succeeded but no URL was returned.");
             }
 
             setFormData(prev => ({
                 ...prev,
-                [type === 'pan' ? 'panFileUrl' : 'cmrFileUrl']: data.url
+                [internalFileType === 'pan' ? 'panFileUrl' : 'cmrFileUrl']: data.url
             }));
         } catch (err: any) {
             console.error("KYC Upload Error:", err);
-            setError(`Failed to upload ${type.toUpperCase()}: ${err.message}`);
+            setError(`Failed to upload ${internalFileType.toUpperCase()}: ${err.message}`);
         } finally {
             setUploadingFile(null);
+            if (e.target) e.target.value = '';
         }
     };
 
@@ -144,26 +170,31 @@ export default function KYCPage() {
         setIsSubmitting(true);
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'http://localhost:9000'}/store/kyc`, {
-                method: "POST",
+            // Update customer metadata with KYC information
+            const response = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'http://localhost:9000'}/store/customers/me`, {
+                method: "POST", // Medusa uses POST to update customer
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${localStorage.getItem("medusa_auth_token")}`,
                     "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || ""
                 },
                 body: JSON.stringify({
-                    pan_number: formData.panNumber,
-                    aadhaar_number: formData.aadhaarNumber.replace(/\s/g, ""),
-                    dp_name: formData.dpName,
-                    demat_number: formData.dematNumber,
-                    pan_file_url: formData.panFileUrl,
-                    cmr_file_url: formData.cmrFileUrl,
+                    metadata: {
+                        kyc_status: "pending",
+                        kyc_pan_number: formData.panNumber,
+                        kyc_aadhaar_number: formData.aadhaarNumber.replace(/\s/g, ""),
+                        kyc_dp_name: formData.dpName,
+                        kyc_demat_number: formData.dematNumber,
+                        kyc_pan_file_url: formData.panFileUrl,
+                        kyc_cmr_file_url: formData.cmrFileUrl,
+                        kyc_full_name: formData.fullName
+                    }
                 })
             });
 
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.message || "Failed to submit KYC");
+                throw new Error(data.message || data.error || "Failed to submit KYC");
             }
 
             setSuccess(true);
@@ -254,6 +285,17 @@ export default function KYCPage() {
                                             onChange={(e) => {
                                                 const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
                                                 setFormData({ ...formData, panNumber: val });
+                                                
+                                                if (val.length === 10) {
+                                                    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+                                                    if (!panRegex.test(val)) {
+                                                        setError("Invalid PAN format. Example: ABCDE1234F");
+                                                    } else if (error && error.includes("PAN")) {
+                                                        setError("");
+                                                    }
+                                                } else if (error && error.includes("PAN")) {
+                                                    setError("");
+                                                }
                                             }}
                                         />
                                         <p className="text-[10px] text-slate-400 ml-1">Example: ABCDE1234F (10 Digits)</p>
@@ -308,6 +350,27 @@ export default function KYCPage() {
                                                 if (val.length > 8) formatted = val.slice(0, 4) + " " + val.slice(4, 8) + " " + val.slice(8);
 
                                                 setFormData({ ...formData, aadhaarNumber: formatted });
+                                                
+                                                if (val.length > 0 && val.length < 12) {
+                                                    if (error && error.includes("Aadhaar")) {
+                                                        // Keep showing error if they are deleting
+                                                    }
+                                                } else if (val.length === 12) {
+                                                    const aadhaarRegex = /^\d{12}$/;
+                                                    if (!aadhaarRegex.test(val)) {
+                                                        setError("Invalid Aadhaar Number. Must be exactly 12 digits.");
+                                                    } else if (error && error.includes("Aadhaar")) {
+                                                        setError("");
+                                                    }
+                                                } else if (error && error.includes("Aadhaar")) {
+                                                    setError("");
+                                                }
+                                            }}
+                                            onBlur={(e) => {
+                                                let val = e.target.value.replace(/[^0-9]/g, "");
+                                                if (val.length > 0 && val.length !== 12) {
+                                                    setError("Invalid Aadhaar Number. Must be exactly 12 digits.");
+                                                }
                                             }}
                                         />
                                     </div>
