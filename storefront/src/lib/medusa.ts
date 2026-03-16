@@ -1,0 +1,388 @@
+const MEDUSA_BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
+const MEDUSA_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
+
+const medusaHeaders = {
+    "Content-Type": "application/json",
+    "x-publishable-api-key": MEDUSA_PUBLISHABLE_KEY,
+};
+
+const getAuthHeaders = () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("medusa_auth_token") : null;
+    return {
+        ...medusaHeaders,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+};
+
+export const medusaClient = {
+    products: {
+        list: async (regionId?: string) => {
+            const query = new URLSearchParams({
+                fields: "id,handle,title,subtitle,description,thumbnail,metadata,variants.id,variants.title,variants.sku,variants.inventory_quantity,variants.prices,variants.calculated_price",
+            });
+            if (regionId) query.append("region_id", regionId);
+
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/products?${query.toString()}`, {
+                headers: medusaHeaders,
+                next: { revalidate: 60 },
+                credentials: "include",
+            });
+            if (!response.ok) throw new Error("Failed to fetch products");
+            return response.json();
+        },
+        retrieve: async (id: string, regionId?: string) => {
+            const query = new URLSearchParams({
+                fields: "id,handle,title,subtitle,description,thumbnail,metadata,variants.id,variants.title,variants.sku,variants.inventory_quantity,variants.prices,variants.calculated_price",
+            });
+            if (regionId) query.append("region_id", regionId);
+
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/products/${id}?${query.toString()}`, {
+                headers: medusaHeaders,
+                next: { revalidate: 60 },
+                credentials: "include",
+            });
+            if (!response.ok) throw new Error("Failed to fetch product");
+            return response.json();
+        },
+    },
+    regions: {
+        list: async () => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/regions`, {
+                headers: medusaHeaders,
+                credentials: "include",
+            });
+            if (!response.ok) throw new Error("Failed to fetch regions");
+            return response.json();
+        },
+    },
+    carts: {
+        create: async (regionId: string) => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/carts`, {
+                method: "POST",
+                headers: medusaHeaders,
+                body: JSON.stringify({ region_id: regionId }),
+                credentials: "include",
+            });
+            if (!response.ok) throw new Error("Failed to create cart");
+            return response.json();
+        },
+        retrieve: async (id: string) => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/carts/${id}`, {
+                headers: medusaHeaders,
+                credentials: "include",
+                cache: "no-store",
+            });
+            if (!response.ok) throw new Error(`Failed to retrieve cart ${id}`);
+            return response.json();
+        },
+        addItems: async (cartId: string, variantId: string, quantity: number, metadata?: any) => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/carts/${cartId}/line-items`, {
+                method: "POST",
+                headers: medusaHeaders,
+                body: JSON.stringify({ variant_id: variantId, quantity, metadata }),
+                credentials: "include",
+                cache: "no-store",
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Failed to add item to cart ${cartId}`);
+            }
+            return response.json();
+        },
+        updateItem: async (cartId: string, lineItemId: string, quantity: number) => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/carts/${cartId}/line-items/${lineItemId}`, {
+                method: "POST",
+                headers: medusaHeaders,
+                body: JSON.stringify({ quantity }),
+                credentials: "include",
+                cache: "no-store",
+            });
+            if (!response.ok) throw new Error("Failed to update item");
+            return response.json();
+        },
+        deleteItem: async (cartId: string, lineItemId: string) => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/carts/${cartId}/line-items/${lineItemId}`, {
+                method: "DELETE",
+                headers: medusaHeaders,
+                credentials: "include",
+                cache: "no-store",
+            });
+            if (!response.ok) throw new Error("Failed to delete item");
+            return response.json();
+        },
+        update: async (id: string, data: any) => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/carts/${id}`, {
+                method: "POST",
+                headers: medusaHeaders,
+                body: JSON.stringify(data),
+                credentials: "include",
+                cache: "no-store",
+            });
+            if (!response.ok) throw new Error("Failed to update cart");
+            return response.json();
+        },
+        createPaymentCollection: async (cartId: string) => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/payment-collections`, {
+                method: "POST",
+                headers: medusaHeaders,
+                body: JSON.stringify({ cart_id: cartId }),
+                credentials: "include",
+                cache: "no-store",
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || "Failed to create payment collection");
+            }
+            return response.json();
+        },
+        initializePaymentSession: async (collectionId: string, providerId: string) => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/payment-collections/${collectionId}/payment-sessions`, {
+                method: "POST",
+                headers: medusaHeaders,
+                body: JSON.stringify({ provider_id: providerId }),
+                credentials: "include",
+                cache: "no-store",
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || "Failed to initialize payment session");
+            }
+            return response.json();
+        },
+        complete: async (id: string) => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/carts/${id}/complete`, {
+                method: "POST",
+                headers: medusaHeaders,
+                credentials: "include",
+                cache: "no-store",
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || "Failed to complete checkout");
+            }
+            return response.json();
+        },
+        listShippingOptions: async (cartId: string) => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/shipping-options?cart_id=${cartId}`, {
+                headers: medusaHeaders,
+                credentials: "include",
+                cache: "no-store",
+            });
+            if (!response.ok) throw new Error("Failed to fetch shipping options");
+            return response.json();
+        },
+        addShippingMethod: async (cartId: string, option_id: string) => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/carts/${cartId}/shipping-methods`, {
+                method: "POST",
+                headers: medusaHeaders,
+                body: JSON.stringify({ option_id }),
+                credentials: "include",
+                cache: "no-store",
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || "Failed to add shipping method");
+            }
+            return response.json();
+        },
+    },
+    orders: {
+        list: async () => {
+            const query = new URLSearchParams({
+                fields: "id,display_id,created_at,canceled_at,fulfillment_status,payment_status,total,shipping_address.*,items.*",
+            });
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/orders?${query.toString()}`, {
+                method: "GET",
+                headers: getAuthHeaders(),
+                credentials: "include",
+                cache: "no-store",
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                console.error("Order fetch error:", text);
+                throw new Error("Failed to fetch orders");
+            }
+            return response.json();
+        },
+    },
+    auth: {
+        register: async (data: any) => {
+            // Medusa V2 Two-Step Registration
+            // 1. Create Auth Identity
+            const authResponse = await fetch(`${MEDUSA_BACKEND_URL}/auth/customer/emailpass/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: data.email,
+                    password: data.password,
+                }),
+                credentials: "include",
+            });
+
+            if (!authResponse.ok) {
+                const errorData = await authResponse.json();
+                throw new Error(errorData.message || "Auth registration failed");
+            }
+
+            const { token } = await authResponse.json();
+
+            // 2. Create Customer with the registration token
+            const customerResponse = await fetch(`${MEDUSA_BACKEND_URL}/store/customers`, {
+                method: "POST",
+                headers: {
+                    ...medusaHeaders,
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    email: data.email,
+                    first_name: data.first_name,
+                    last_name: data.last_name,
+                }),
+                credentials: "include",
+            });
+
+            if (!customerResponse.ok) {
+                const errorData = await customerResponse.json();
+                throw new Error(errorData.message || "Customer creation failed");
+            }
+
+            return customerResponse.json();
+        },
+        login: async (data: any) => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/auth/customer/emailpass`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+                credentials: "include",
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || "Login failed");
+            }
+            const result = await response.json();
+            if (result.token && typeof window !== "undefined") {
+                localStorage.setItem("medusa_auth_token", result.token);
+            }
+            return result;
+        },
+        logout: async () => {
+            if (typeof window !== "undefined") {
+                localStorage.removeItem("medusa_auth_token");
+            }
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/auth/logout`, {
+                method: "DELETE",
+                headers: medusaHeaders,
+                credentials: "include",
+            });
+            return response.ok;
+        },
+    },
+    customers: {
+        retrieve: async () => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/customers/me`, {
+                headers: getAuthHeaders(),
+                credentials: "include",
+            });
+            if (!response.ok) {
+                return null;
+            }
+            return response.json();
+        },
+        update: async (data: any) => {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/customers/me`, {
+                method: "POST",
+                headers: getAuthHeaders(),
+                body: JSON.stringify(data),
+                credentials: "include",
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || "Update failed");
+            }
+            return response.json();
+        }
+    },
+    admin: {
+        kyc: {
+            list: async () => {
+                const response = await fetch(`${MEDUSA_BACKEND_URL}/admin/kyc`, {
+                    headers: medusaHeaders,
+                    credentials: "include",
+                });
+                return response.json();
+            },
+            verify: async (id: string) => {
+                const response = await fetch(`${MEDUSA_BACKEND_URL}/admin/kyc/${id}/verify`, {
+                    method: "POST",
+                    headers: medusaHeaders,
+                    credentials: "include",
+                });
+                return response.json();
+            },
+            reject: async (id: string, reason: string) => {
+                const response = await fetch(`${MEDUSA_BACKEND_URL}/admin/kyc/${id}/reject`, {
+                    method: "POST",
+                    headers: medusaHeaders,
+                    body: JSON.stringify({ reason }),
+                    credentials: "include",
+                });
+                return response.json();
+            }
+        }
+    }
+};
+
+// Helper to map Medusa products to our "Deal" interface
+export const mapMedusaToDeal = (medusaProduct: any) => {
+    // In Medusa V2, we prefer variants[0].calculated_price
+    const variant = medusaProduct.variants?.[0];
+    const prices = variant?.prices || [];
+    const calculatedPrice = variant?.calculated_price;
+
+    // Use calculated price if available (Medusa V2)
+    let price = 0;
+    if (calculatedPrice) {
+        // Use calculated price directly as whole number
+        price = calculatedPrice.calculated_amount;
+    } else {
+        // Fallback to old variants[0].prices (Medusa V1/Legacy)
+        const inrPrice = prices.find((p: any) => p.currency_code?.toLowerCase() === "inr");
+        let rawAmount = 0;
+        if (inrPrice) {
+            rawAmount = inrPrice.amount;
+        } else if (prices.length > 0) {
+            rawAmount = prices[0].amount;
+        }
+
+        if (rawAmount > 0) {
+            price = rawAmount;
+        }
+    }
+
+    // Secondary fallback to metadata (if user added it there)
+    if (price === 0 && medusaProduct.metadata?.price) {
+        price = parseFloat(medusaProduct.metadata.price as string);
+    }
+
+    const minInvestment = medusaProduct.metadata?.min_investment ? parseInt(medusaProduct.metadata.min_investment as string) : 1;
+
+    return {
+        id: medusaProduct.id,
+        handle: medusaProduct.handle,
+        name: medusaProduct.title,
+        logo: medusaProduct.thumbnail || "",
+        sector: medusaProduct.subtitle || "General / Unlisted",
+        price: price,
+        minInvestment: minInvestment,
+        isin: medusaProduct.metadata?.isin || "",
+        quantity: variant?.inventory_quantity || 100000, // Default for deals
+        summary: medusaProduct.description || "",
+        description: medusaProduct.metadata?.long_description || medusaProduct.description || "",
+        isTrending: medusaProduct.metadata?.is_trending === "true" || medusaProduct.metadata?.is_trending === true,
+        financials: typeof medusaProduct.metadata?.financials === "string"
+            ? JSON.parse(medusaProduct.metadata.financials)
+            : medusaProduct.metadata?.financials || [],
+        metadata: medusaProduct.metadata || {},
+        variants: medusaProduct.variants || [],
+    };
+};

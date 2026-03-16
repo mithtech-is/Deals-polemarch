@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: polemarch-backend
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npx medusa db:migrate && npm run start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: polemarch-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: polemarch-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: STORE_CORS
+        value: "*"
+      - key: ADMIN_CORS
+        value: "*"
+      - key: AUTH_CORS
+        value: "*"
+      - key: NODE_VERSION
+        value: "20.11.1"
+
+databases:
+  - name: polemarch-db
+    databaseName: medusa
+    user: medusa_admin
+
+screenshots:
+  - type: redis
+    name: polemarch-redis
+    ipAllowList: [] # Only allow internal connections
