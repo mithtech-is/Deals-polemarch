@@ -10,17 +10,36 @@ const CustomerKycWidget = ({ data: customer }: { data: any }) => {
     return null
   }
 
-  const handleAction = async (status: string) => {
+  const handleAction = async (e: React.MouseEvent, status: 'approved' | 'rejected') => {
+    e.preventDefault()
+    
+    console.log(`[KYC WIDGET] Triggering ${status} for customer: ${customerId}`);
+    
     try {
-      const endpoint = status === 'verified' ? 'verify' : 'reject'
-      await fetch(`/admin/kyc/${customerId}/${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: status === 'rejected' ? JSON.stringify({ reason: "Documents unclear" }) : undefined
+      const response = await fetch(`/admin/kyc/${customerId}`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({ 
+          status,
+          review_notes: status === 'rejected' ? "Documents unclear" : "Approved by admin"
+        })
       })
+
+      console.log(`[KYC WIDGET] Response status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update KYC status")
+      }
+
+      console.log(`[KYC WIDGET] Success! Reloading to reflect metadata changes...`);
+      // Force a reload to refresh the customer data which includes metadata
       window.location.reload()
-    } catch (e) {
-      console.error("Action failed", e)
+    } catch (e: any) {
+      console.error(`[KYC WIDGET] Error:`, e);
+      alert(`Error: ${e.message}`);
     }
   }
 
@@ -29,7 +48,7 @@ const CustomerKycWidget = ({ data: customer }: { data: any }) => {
       <div className="flex items-center justify-between mb-4">
         <Heading level="h2">KYC Details</Heading>
         <StatusBadge color={
-          metadata.kyc_status === 'verified' || metadata.kyc_status === 'approved' ? 'green' : 
+          metadata.kyc_status === 'approved' || metadata.kyc_status === 'verified' ? 'green' : 
           metadata.kyc_status === 'rejected' ? 'red' : 
           metadata.kyc_status === 'pending' || metadata.kyc_status === 'submitted' ? 'orange' : 'grey'
         }>
@@ -57,28 +76,30 @@ const CustomerKycWidget = ({ data: customer }: { data: any }) => {
       <div className="flex items-center gap-4 mb-6">
         {metadata.kyc_pan_file_url && (
             <a href={metadata.kyc_pan_file_url} target="_blank" rel="noreferrer">
-                <Button variant="secondary" size="small">View PAN File</Button>
+                <Button type="button" variant="secondary" size="small">View PAN File</Button>
             </a>
         )}
         {metadata.kyc_cmr_file_url && (
             <a href={metadata.kyc_cmr_file_url} target="_blank" rel="noreferrer">
-                <Button variant="secondary" size="small">View CMR File</Button>
+                <Button type="button" variant="secondary" size="small">View CMR Copy</Button>
             </a>
         )}
       </div>
       <div className="flex gap-2">
         <Button 
+          type="button"
           variant="primary" 
           size="small" 
-          onClick={() => handleAction('verified')} 
-          disabled={metadata.kyc_status === 'verified'}
+          onClick={(e) => handleAction(e, 'approved')} 
+          disabled={metadata.kyc_status === 'approved' || metadata.kyc_status === 'verified'}
         >
           Approve
         </Button>
         <Button 
+          type="button"
           variant="danger" 
           size="small" 
-          onClick={() => handleAction('rejected')} 
+          onClick={(e) => handleAction(e, 'rejected')} 
           disabled={metadata.kyc_status === 'rejected'}
         >
           Reject

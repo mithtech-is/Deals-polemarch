@@ -46,17 +46,36 @@ const KycRequestsPage = () => {
         fetchRequests()
     }, [])
 
-    const handleAction = async (customerId: string, status: string) => {
+    const handleAction = async (e: React.MouseEvent, customerId: string, status: 'approved' | 'rejected') => {
+        e.preventDefault()
+        e.stopPropagation()
+        
+        console.log(`[KYC ACTION] Triggering ${status} for customer: ${customerId}`);
+        
         try {
-            const endpoint = status === 'approved' ? 'verify' : 'reject'
-            await fetch(`/admin/kyc/${customerId}/${endpoint}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: status === 'rejected' ? JSON.stringify({ reason: "Documents unclear" }) : undefined
+            const response = await fetch(`/admin/kyc/${customerId}`, {
+                method: 'PATCH',
+                headers: { 
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({ 
+                    status, 
+                    review_notes: status === 'rejected' ? "Documents unclear" : "Approved by admin" 
+                })
             })
+
+            console.log(`[KYC ACTION] Response status: ${response.status}`);
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || "Failed to update KYC status")
+            }
+
+            console.log(`[KYC ACTION] Success! Refreshing list...`);
             fetchRequests()
-        } catch (e) {
-            console.error(e)
+        } catch (e: any) {
+            console.error(`[KYC ACTION] Error:`, e);
+            alert(`Error: ${e.message}`);
         }
     }
 
@@ -116,11 +135,25 @@ const KycRequestsPage = () => {
                             </Table.Cell>
                             <Table.Cell>
                                 <div className="flex gap-2">
-                                    {request.status !== 'approved' && request.status !== 'verified' && (
-                                        <Button variant="primary" size="small" onClick={() => handleAction(request.customer_id, 'approved')}>Approve</Button>
+                                    {(request.status !== 'approved' && request.status !== 'verified') && (
+                                        <Button 
+                                            type="button"
+                                            variant="primary" 
+                                            size="small" 
+                                            onClick={(e) => handleAction(e, request.customer_id, 'approved')}
+                                        >
+                                            Approve
+                                        </Button>
                                     )}
                                     {request.status !== 'rejected' && (
-                                        <Button variant="danger" size="small" onClick={() => handleAction(request.customer_id, 'rejected')}>Reject</Button>
+                                        <Button 
+                                            type="button"
+                                            variant="danger" 
+                                            size="small" 
+                                            onClick={(e) => handleAction(e, request.customer_id, 'rejected')}
+                                        >
+                                            Reject
+                                        </Button>
                                     )}
                                 </div>
                             </Table.Cell>
