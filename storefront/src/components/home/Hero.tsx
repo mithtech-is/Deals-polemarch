@@ -8,13 +8,13 @@ const Hero = () => {
 
     const getCtaLink = () => {
         if (!user) return "/register";
-        if (user.metadata?.kyc_status === "verified") return "/deals";
+        if (user.metadata?.kyc_status === "verified" || user.metadata?.kyc_status === "approved") return "/deals";
         return "/dashboard/kyc";
     };
 
     const getCtaText = () => {
         if (!user) return "Register Now";
-        if (user.metadata?.kyc_status === "verified") return "Explore Deals";
+        if (user.metadata?.kyc_status === "verified" || user.metadata?.kyc_status === "approved") return "Explore Deals";
         return "Complete KYC";
     };
 

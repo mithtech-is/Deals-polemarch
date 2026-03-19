@@ -12,8 +12,6 @@ const FeaturedDeals = async () => {
         console.error("Error fetching featured deals:", error);
     }
 
-    if (deals.length === 0) return null;
-
     return (
         <section className="py-24 bg-slate-50/50">
             <div className="container mx-auto px-4 sm:px-6">
@@ -29,11 +27,20 @@ const FeaturedDeals = async () => {
                     </Link>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {deals.map((deal: Deal) => (
-                        <DealCard key={deal.id} {...deal} />
-                    ))}
-                </div>
+                {deals.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {deals.map((deal: Deal) => (
+                            <DealCard key={deal.id} {...deal} />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="rounded-[32px] border border-dashed border-slate-200 bg-white p-12 text-center">
+                        <p className="text-lg font-bold text-slate-700">No trending shares available yet.</p>
+                        <p className="mt-2 text-sm text-slate-500">
+                            Mark products as trending in admin and they will appear here automatically.
+                        </p>
+                    </div>
+                )}
             </div>
         </section>
     );

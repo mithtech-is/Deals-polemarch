@@ -2,9 +2,11 @@ import FinancialsTable from "@/components/product/FinancialsTable";
 
 export interface Deal {
     id: string;
+    handle?: string;
     name: string;
     logo: string;
     sector: string;
+    marketCap: string;
     price: number;
     minInvestment: number; // in units
     quantity: number;

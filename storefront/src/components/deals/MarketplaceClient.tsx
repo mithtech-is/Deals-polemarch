@@ -12,6 +12,7 @@ interface MarketplaceClientProps {
 const MarketplaceClient = ({ initialDeals }: MarketplaceClientProps) => {
     const [search, setSearch] = useState("");
     const [sector, setSector] = useState("All Sectors");
+    const [marketCap, setMarketCap] = useState("All Market Caps");
     const [sortBy, setSortBy] = useState("latest");
 
     const filteredDeals = useMemo(() => {
@@ -33,6 +34,11 @@ const MarketplaceClient = ({ initialDeals }: MarketplaceClientProps) => {
             result = result.filter((deal) => deal.sector.toLowerCase() === query);
         }
 
+        if (marketCap && marketCap !== "All Market Caps") {
+            const query = marketCap.toLowerCase();
+            result = result.filter((deal) => deal.marketCap.toLowerCase() === query);
+        }
+
         // Sorting
         if (sortBy === "price-low") {
             result.sort((a, b) => a.price - b.price);
@@ -41,7 +47,7 @@ const MarketplaceClient = ({ initialDeals }: MarketplaceClientProps) => {
         }
 
         return result;
-    }, [initialDeals, search, sector, sortBy]);
+    }, [initialDeals, marketCap, search, sector, sortBy]);
 
     return (
         <div className="container mx-auto">
@@ -57,6 +63,8 @@ const MarketplaceClient = ({ initialDeals }: MarketplaceClientProps) => {
                 setSearch={setSearch}
                 sector={sector}
                 setSector={setSector}
+                marketCap={marketCap}
+                setMarketCap={setMarketCap}
                 sortBy={sortBy}
                 setSortBy={setSortBy}
                 totalDeals={filteredDeals.length}
@@ -71,7 +79,7 @@ const MarketplaceClient = ({ initialDeals }: MarketplaceClientProps) => {
                     <div className="col-span-full text-center py-20 bg-white rounded-[40px] border border-dashed border-slate-200">
                         <p className="text-slate-500 mb-2">No deals found matching your criteria.</p>
                         <button
-                            onClick={() => { setSearch(""); setSector("All Sectors"); }}
+                            onClick={() => { setSearch(""); setSector("All Sectors"); setMarketCap("All Market Caps"); }}
                             className="text-primary font-bold hover:underline"
                         >
                             Clear all filters

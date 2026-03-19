@@ -25,11 +25,7 @@ export default function DealDetailPage() {
     useEffect(() => {
         const fetchDeal = async () => {
             try {
-                // Fetch region first to get correct pricing context
-                const { regions } = await medusaClient.regions.list();
-                const regionId = regions?.[0]?.id;
-
-                const { product } = await medusaClient.products.retrieve(id, regionId);
+                const { product } = await medusaClient.products.retrieve(id);
                 setDeal(mapMedusaToDeal(product));
             } catch (error) {
                 console.error("Error fetching deal:", error);
@@ -89,7 +85,6 @@ export default function DealDetailPage() {
                     </Link>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-                        {/* Left: Product Info */}
                         <div>
                             <div className="flex items-center gap-6 mb-8">
                                 <div className="h-24 w-24 rounded-3xl bg-slate-50 border border-slate-100 p-4 flex items-center justify-center">
@@ -119,7 +114,6 @@ export default function DealDetailPage() {
                                 </p>
                             </div>
 
-                            {/* Financials Table Integration */}
                             {deal.financials && deal.financials.length > 0 && (
                                 <FinancialsTable data={deal.financials} />
                             )}
@@ -143,7 +137,6 @@ export default function DealDetailPage() {
                             </div>
                         </div>
 
-                        {/* Right: Pricing Card */}
                         <div className="lg:sticky lg:top-32 h-fit">
                             <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-2xl relative overflow-hidden">
                                 <div className="absolute top-0 right-0 h-40 w-40 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
@@ -153,7 +146,7 @@ export default function DealDetailPage() {
                                         <div className="flex justify-between items-end mb-4">
                                             <div>
                                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Price per share</p>
-                                                <p className="text-4xl font-bold text-slate-900">₹{deal.price.toLocaleString()}</p>
+                                                <p className="text-4xl font-bold text-slate-900">Rs. {deal.price.toLocaleString()}</p>
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-xs font-bold text-primary flex items-center gap-1 justify-end">
@@ -196,16 +189,16 @@ export default function DealDetailPage() {
                                     <div className="space-y-4 mb-8 pt-6 border-t border-slate-50">
                                         <div className="flex justify-between py-1">
                                             <span className="text-slate-500 font-medium">Investment Value</span>
-                                            <span className="font-bold">₹{(deal.price * quantity).toLocaleString()}</span>
+                                            <span className="font-bold">Rs. {(deal.price * quantity).toLocaleString()}</span>
                                         </div>
                                         <div className="flex justify-between py-1">
                                             <span className="text-slate-500 font-medium">Processing Fee</span>
-                                            <span className="font-bold text-green-600">₹0 (Limited Time)</span>
+                                            <span className="font-bold text-green-600">Rs. 0 (Limited Time)</span>
                                         </div>
                                     </div>
 
                                     <button
-                                        disabled={deal.price <= 0 || (user && user.metadata?.kyc_status !== 'approved' && user.metadata?.kyc_status !== 'verified')}
+                                        disabled={deal.price <= 0 || (user && user.metadata?.kyc_status !== "approved" && user.metadata?.kyc_status !== "verified")}
                                         onClick={handleAddToCart}
                                         className="w-full py-5 rounded-2xl bg-primary text-white font-bold text-lg hover:shadow-2xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
                                     >
@@ -213,21 +206,21 @@ export default function DealDetailPage() {
                                         {deal.price > 0 ? "Buy Shares" : "Price Unavailable"}
                                     </button>
 
-                                    {user && user.metadata?.kyc_status !== 'approved' && user.metadata?.kyc_status !== 'verified' && (
+                                    {user && user.metadata?.kyc_status !== "approved" && user.metadata?.kyc_status !== "verified" && (
                                         <div className="mt-4 p-4 rounded-xl bg-orange-50 border border-orange-100 flex gap-3">
                                             <Info className="h-5 w-5 text-orange-500 flex-shrink-0" />
                                             <div>
                                                 <p className="text-sm font-bold text-orange-800">KYC Verification Required</p>
                                                 <p className="text-xs text-orange-700 mt-1">
-                                                    {user.metadata?.kyc_status === 'pending' || user.metadata?.kyc_status === 'submitted'
+                                                    {user.metadata?.kyc_status === "pending" || user.metadata?.kyc_status === "submitted"
                                                         ? "Your KYC verification is pending. You will be able to invest once it is approved."
-                                                        : user.metadata?.kyc_status === 'rejected'
+                                                        : user.metadata?.kyc_status === "rejected"
                                                         ? "Your KYC was rejected. Please update your details in the dashboard."
                                                         : "Please complete your KYC in the dashboard to start investing."
                                                     }
                                                 </p>
                                                 <Link href="/dashboard" className="text-xs font-bold text-primary hover:underline mt-2 inline-block">
-                                                    Go to Dashboard →
+                                                    Go to Dashboard {"->"}
                                                 </Link>
                                             </div>
                                         </div>

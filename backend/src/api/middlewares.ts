@@ -93,9 +93,21 @@ export default defineMiddlewares({
             ]
         },
         {
-            matcher: "/admin/kyc*",
+            matcher: "/admin/customer-kyc*",
             middlewares: [
-                authenticate("admin", ["session", "bearer"]),
+                authenticate("user", ["session", "bearer"]),
+            ],
+        },
+        {
+            matcher: "/store/notifications*",
+            middlewares: [
+                authenticate("customer", ["session", "bearer"]),
+            ],
+        },
+        {
+            matcher: "/store/kyc*",
+            middlewares: [
+                authenticate("customer", ["session", "bearer"]),
             ],
         },
         {

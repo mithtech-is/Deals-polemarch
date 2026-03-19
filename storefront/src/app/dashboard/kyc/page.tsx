@@ -46,23 +46,41 @@ export default function KYCPage() {
 
                 const data = await response.json();
                 const metadata = data.customer?.metadata || {};
+                const defaultFullName = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
 
                 if (metadata.kyc_status) {
-                    setKycData({ status: metadata.kyc_status });
-                    setFormData({
-                        panNumber: metadata.kyc_pan_number || "",
-                        aadhaarNumber: metadata.kyc_aadhaar_number || "",
-                        fullName: user.first_name + " " + (user.last_name || ""),
-                        dpName: metadata.kyc_dp_name || "",
-                        dematNumber: metadata.kyc_demat_number || "",
-                        panFileUrl: metadata.kyc_pan_file_url || "",
-                        cmrFileUrl: metadata.kyc_cmr_file_url || "",
+                    setKycData({
+                        status: metadata.kyc_status,
+                        rejectionReason: metadata.kyc_rejection_reason || "",
+                        reviewNotes: metadata.kyc_review_notes || "",
                     });
+
+                    if (metadata.kyc_status !== "rejected") {
+                        setFormData({
+                            panNumber: metadata.kyc_pan_number || "",
+                            aadhaarNumber: metadata.kyc_aadhaar_number || "",
+                            fullName: metadata.kyc_full_name || defaultFullName,
+                            dpName: metadata.kyc_dp_name || "",
+                            dematNumber: metadata.kyc_demat_number || "",
+                            panFileUrl: metadata.kyc_pan_file_url || "",
+                            cmrFileUrl: metadata.kyc_cmr_file_url || "",
+                        });
+                    } else {
+                        setFormData({
+                            panNumber: "",
+                            aadhaarNumber: "",
+                            fullName: metadata.kyc_full_name || defaultFullName,
+                            dpName: "",
+                            dematNumber: "",
+                            panFileUrl: "",
+                            cmrFileUrl: "",
+                        });
+                    }
                 } else {
                     // Set default name if no KYC data exists yet
                     setFormData(prev => ({
                         ...prev,
-                        fullName: user.first_name + " " + (user.last_name || ""),
+                        fullName: defaultFullName,
                     }));
                 }
             } catch (e) {
@@ -82,8 +100,24 @@ export default function KYCPage() {
     }
 
     const currentKycStatus = kycData?.status || "none";
+    const normalizedAadhaar = formData.aadhaarNumber.replace(/\s/g, "");
+    const isFormReady =
+        formData.fullName.trim().length > 0 &&
+        /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber) &&
+        formData.dpName.trim().length > 0 &&
+        /^[0-9]{16}$/.test(formData.dematNumber) &&
+        /^[0-9]{12}$/.test(normalizedAadhaar) &&
+        !!formData.panFileUrl &&
+        !!formData.cmrFileUrl &&
+        !isSubmitting &&
+        !uploadingFile;
 
     const validateFields = () => {
+        if (!formData.fullName.trim()) {
+            setError("Full name is required.");
+            return false;
+        }
+
         const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
         if (!panRegex.test(formData.panNumber)) {
             setError("Invalid PAN format. Example: ABCDE1234F");
@@ -99,6 +133,11 @@ export default function KYCPage() {
         const dematRegex = /^[0-9]{16}$/;
         if (!dematRegex.test(formData.dematNumber)) {
             setError("Invalid Demat Number. Must be exactly 16 digits (8-digit DP ID + 8-digit Client ID).");
+            return false;
+        }
+
+        if (!formData.dpName.trim()) {
+            setError("DP Name is required.");
             return false;
         }
 
@@ -180,7 +219,14 @@ export default function KYCPage() {
                 },
                 body: JSON.stringify({
                     metadata: {
+                        ...(user.metadata || {}),
                         kyc_status: "pending",
+                        kyc_submitted_at: new Date().toISOString(),
+                        kyc_reviewed_at: null,
+                        kyc_review_notes: null,
+                        kyc_rejection_reason: null,
+                        kyc_approved_at: null,
+                        kyc_rejected_at: null,
                         kyc_pan_number: formData.panNumber,
                         kyc_aadhaar_number: formData.aadhaarNumber.replace(/\s/g, ""),
                         kyc_dp_name: formData.dpName,
@@ -205,6 +251,32 @@ export default function KYCPage() {
             setIsSubmitting(false);
         }
     };
+
+    if (currentKycStatus === "approved" || currentKycStatus === "verified") {
+        return (
+            <div className="flex flex-col min-h-screen bg-slate-50/50">
+                <Navbar />
+                <main className="flex-grow py-20 px-4">
+                    <div className="container mx-auto max-w-2xl text-center">
+                        <div className="h-24 w-24 rounded-[32px] bg-green-50 text-green-600 flex items-center justify-center mx-auto mb-8 shadow-sm">
+                            <CheckCircle2 className="h-12 w-12" />
+                        </div>
+                        <h1 className="text-4xl font-bold mb-4">KYC Approved</h1>
+                        <p className="text-xl text-slate-500 mb-12">
+                            Your KYC has been accepted. You can now access investment features across your dashboard.
+                        </p>
+                        <button
+                            onClick={() => router.push("/dashboard")}
+                            className="px-8 py-4 rounded-2xl bg-primary text-white font-bold hover:shadow-lg transition-all"
+                        >
+                            Back to Dashboard
+                        </button>
+                    </div>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
 
     if (success || currentKycStatus === "submitted" || currentKycStatus === "pending") {
         return (
@@ -260,6 +332,14 @@ export default function KYCPage() {
                             </div>
 
                             <form onSubmit={handleSubmit} className="space-y-6">
+                                {currentKycStatus === "rejected" && (
+                                    <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-red-700">
+                                        <p className="mb-1 text-sm font-bold">Previous submission was rejected</p>
+                                        <p className="text-sm">
+                                            {kycData?.rejectionReason || "Please correct your details and submit again."}
+                                        </p>
+                                    </div>
+                                )}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold text-slate-600 ml-1">Full Name (As per PAN)</label>
                                     <input
@@ -438,9 +518,9 @@ export default function KYCPage() {
                                 )}
 
                                 <button
-                                    disabled={isSubmitting || !!uploadingFile}
+                                    disabled={!isFormReady}
                                     type="submit"
-                                    className="w-full py-5 rounded-[24px] bg-primary text-white font-bold text-lg hover:shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:scale-100 shadow-xl shadow-primary/20"
+                                    className="w-full py-5 rounded-[24px] bg-primary text-white font-bold text-lg hover:shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-xl shadow-primary/20"
                                 >
                                     {isSubmitting ? (
                                         <>
@@ -448,7 +528,7 @@ export default function KYCPage() {
                                             Submitting...
                                         </>
                                     ) : (
-                                        "Submit Verification Request"
+                                        currentKycStatus === "rejected" ? "Re-submit Verification Request" : "Submit Verification Request"
                                     )}
                                 </button>
                             </form>

@@ -8,11 +8,19 @@ import { Deal } from "@/data/deals";
 export default async function MarketplacePage() {
     let deals: Deal[] = [];
     try {
-        // Fetch region first to get correct pricing context
-        const { regions } = await medusaClient.regions.list();
-        const regionId = regions?.[0]?.id;
+        let regionId: string | undefined;
 
-        const { products } = await medusaClient.products.list(regionId);
+        try {
+            const { regions } = await medusaClient.regions.list();
+            regionId = regions?.[0]?.id;
+        } catch (regionError) {
+            console.error("Error fetching regions:", regionError);
+        }
+
+        const { products } = regionId
+            ? await medusaClient.products.list(regionId).catch(() => medusaClient.products.list())
+            : await medusaClient.products.list();
+
         deals = products.map(mapMedusaToDeal);
     } catch (error) {
         console.error("Error fetching deals:", error);

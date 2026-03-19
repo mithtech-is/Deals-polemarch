@@ -24,8 +24,8 @@ const Navbar = () => {
                             width={160}
                             height={40}
                             priority
-                            className="h-10 w-auto object-contain"
-                            style={{ height: 'auto' }}
+                            className="h-8 w-auto max-w-[140px] object-contain sm:h-9 sm:max-w-[156px] lg:h-10 lg:max-w-[164px]"
+                            style={{ width: "auto", height: "auto" }}
                         />
                     </Link>
                 </div>

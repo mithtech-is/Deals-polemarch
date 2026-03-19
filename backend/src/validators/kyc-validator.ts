@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+const fileUrlSchema = z.string().refine((value) => {
+    if (!value) {
+        return false;
+    }
+
+    return value.startsWith("/static/") || /^https?:\/\//i.test(value);
+}, "Invalid file URL");
+
 export const ManualInvestmentSchema = z.object({
     id: z.string(),
     companyName: z.string(),
@@ -15,14 +23,20 @@ export const ManualInvestmentSchema = z.object({
 });
 
 export const KycMetadataSchema = z.object({
-    kyc_status: z.enum(["pending", "submitted", "verified", "rejected"]).optional(),
-    pan_number: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format").optional(),
-    aadhaar_number: z.string().regex(/^[0-9]{12}$/, "Aadhaar must be 12 digits").optional(),
-    dp_name: z.string().optional(),
-    demat_number: z.string().regex(/^[0-9]{16}$/, "Demat number must be 16 digits").optional(),
-    pan_file_url: z.string().url().optional(),
-    cmr_file_url: z.string().url().optional(),
-    kyc_submitted_at: z.number().optional(),
+    kyc_status: z.enum(["pending", "submitted", "approved", "verified", "rejected"]).optional(),
+    kyc_pan_number: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format").optional(),
+    kyc_aadhaar_number: z.string().regex(/^[0-9]{12}$/, "Aadhaar must be 12 digits").optional(),
+    kyc_full_name: z.string().optional(),
+    kyc_dp_name: z.string().optional(),
+    kyc_demat_number: z.string().regex(/^[0-9]{16}$/, "Demat number must be 16 digits").optional(),
+    kyc_pan_file_url: fileUrlSchema.optional(),
+    kyc_cmr_file_url: fileUrlSchema.optional(),
+    kyc_submitted_at: z.string().datetime().optional().nullable(),
+    kyc_reviewed_at: z.string().datetime().optional().nullable(),
+    kyc_approved_at: z.string().datetime().optional().nullable(),
+    kyc_rejected_at: z.string().datetime().optional().nullable(),
+    kyc_review_notes: z.string().optional().nullable(),
+    kyc_rejection_reason: z.string().optional().nullable(),
     manual_investments: z.array(ManualInvestmentSchema).optional()
 }).passthrough();
 

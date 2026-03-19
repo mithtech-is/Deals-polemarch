@@ -24,8 +24,7 @@ const NotificationBell = () => {
       });
       const data = await response.json();
       setNotifications(data.notifications || []);
-      // We assume the API returns the unread count or we calculate it
-      setCount(data.notifications?.filter((n: any) => !n.read).length || 0);
+      setCount(data.notifications?.filter((n: any) => !n.is_read).length || 0);
     } catch (e) {
       console.error("Failed to fetch notifications", e);
     }
@@ -108,7 +107,7 @@ const NotificationBell = () => {
               notifications.map((n) => (
                 <div 
                   key={n.id} 
-                  className={`p-4 border-b last:border-0 hover:bg-muted/50 transition-colors cursor-pointer ${!n.read ? 'bg-primary/5' : ''}`}
+                  className={`p-4 border-b last:border-0 hover:bg-muted/50 transition-colors cursor-pointer ${!n.is_read ? 'bg-primary/5' : ''}`}
                   onClick={() => markAsRead(n.id)}
                 >
                   <p className="font-bold text-[13px] leading-tight mb-1">{n.title}</p>

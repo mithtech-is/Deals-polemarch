@@ -8,6 +8,8 @@ interface DealFiltersProps {
     setSearch: (val: string) => void;
     sector: string;
     setSector: (val: string) => void;
+    marketCap: string;
+    setMarketCap: (val: string) => void;
     sortBy: string;
     setSortBy: (val: string) => void;
     totalDeals: number;
@@ -18,6 +20,8 @@ const DealFilters = ({
     setSearch,
     sector,
     setSector,
+    marketCap,
+    setMarketCap,
     sortBy,
     setSortBy,
     totalDeals
@@ -42,14 +46,15 @@ const DealFilters = ({
                     <FilterDropdown
                         label="Sector"
                         value={sector}
-                        options={["All Sectors", "FinTech", "Retail", "Manufacturing", "Tech", "Healthcare"]}
+                        options={["All Sectors", "Finance", "FinTech", "Retail", "Manufacturing", "Tech", "Healthcare", "Hospitality"]}
                         onChange={setSector}
                     />
 
-                    {/* Placeholder for other filters that can be implemented similar to Sector */}
                     <FilterDropdown
                         label="Market Cap"
-                        options={["Small", "Mid", "Large"]}
+                        value={marketCap}
+                        options={["All Market Caps", "Small Cap", "Mid Cap", "Large Cap", "Unspecified"]}
+                        onChange={setMarketCap}
                     />
                 </div>
             </div>
@@ -78,12 +83,13 @@ const DealFilters = ({
 
 const FilterDropdown = ({ label, options, value, onChange }: { label: string; options: string[]; value?: string; onChange?: (val: string) => void }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const isActive = value && value !== "All Sectors" && value !== "All Market Caps";
 
     return (
         <div className="relative">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold transition-all border ${value && value !== "All Sectors"
+                className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold transition-all border ${isActive
                         ? "bg-primary/5 text-primary border-primary/20"
                         : "bg-slate-50 text-slate-900 border-transparent hover:border-slate-200"
                     }`}

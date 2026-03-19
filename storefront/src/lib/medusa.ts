@@ -14,31 +14,85 @@ const getAuthHeaders = () => {
     };
 };
 
+const readTextMetadata = (metadata: Record<string, any> | undefined, keys: string[]) => {
+    for (const key of keys) {
+        const value = metadata?.[key];
+        if (typeof value === "string" && value.trim()) {
+            return value.trim();
+        }
+    }
+
+    return "";
+};
+
+const readNumberMetadata = (metadata: Record<string, any> | undefined, keys: string[]) => {
+    for (const key of keys) {
+        const value = metadata?.[key];
+        if (typeof value === "number" && Number.isFinite(value)) {
+            return value;
+        }
+        if (typeof value === "string" && value.trim()) {
+            const parsed = Number(value.replace(/[^0-9.]/g, ""));
+            if (Number.isFinite(parsed) && parsed > 0) {
+                return parsed;
+            }
+        }
+    }
+
+    return 0;
+};
+
+const normalizeSector = (medusaProduct: any) => {
+    const sector =
+        readTextMetadata(medusaProduct.metadata, ["sector", "industry", "category"]) ||
+        medusaProduct.subtitle ||
+        "General / Unlisted";
+
+    return sector.trim();
+};
+
+const normalizeMarketCap = (medusaProduct: any) => {
+    const rawMarketCap = readTextMetadata(medusaProduct.metadata, [
+        "market_cap_bucket",
+        "market_cap_category",
+        "market_cap",
+        "marketCap",
+    ]);
+
+    if (!rawMarketCap) {
+        return "Unspecified";
+    }
+
+    const normalized = rawMarketCap.toLowerCase();
+
+    if (normalized.includes("small")) return "Small Cap";
+    if (normalized.includes("mid")) return "Mid Cap";
+    if (normalized.includes("large")) return "Large Cap";
+
+    return rawMarketCap;
+};
+
 export const medusaClient = {
     products: {
         list: async (regionId?: string) => {
-            const query = new URLSearchParams({
-                fields: "id,handle,title,subtitle,description,thumbnail,metadata,variants.id,variants.title,variants.sku,variants.inventory_quantity,variants.prices,variants.calculated_price",
-            });
+            const query = new URLSearchParams();
             if (regionId) query.append("region_id", regionId);
 
-            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/products?${query.toString()}`, {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/marketplace-products?${query.toString()}`, {
                 headers: medusaHeaders,
-                next: { revalidate: 60 },
+                cache: "no-store",
                 credentials: "include",
             });
             if (!response.ok) throw new Error("Failed to fetch products");
             return response.json();
         },
         retrieve: async (id: string, regionId?: string) => {
-            const query = new URLSearchParams({
-                fields: "id,handle,title,subtitle,description,thumbnail,metadata,variants.id,variants.title,variants.sku,variants.inventory_quantity,variants.prices,variants.calculated_price",
-            });
+            const query = new URLSearchParams();
             if (regionId) query.append("region_id", regionId);
 
-            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/products/${id}?${query.toString()}`, {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/marketplace-products/${id}?${query.toString()}`, {
                 headers: medusaHeaders,
-                next: { revalidate: 60 },
+                cache: "no-store",
                 credentials: "include",
             });
             if (!response.ok) throw new Error("Failed to fetch product");
@@ -301,34 +355,6 @@ export const medusaClient = {
             }
             return response.json();
         }
-    },
-    admin: {
-        kyc: {
-            list: async () => {
-                const response = await fetch(`${MEDUSA_BACKEND_URL}/admin/kyc`, {
-                    headers: medusaHeaders,
-                    credentials: "include",
-                });
-                return response.json();
-            },
-            verify: async (id: string) => {
-                const response = await fetch(`${MEDUSA_BACKEND_URL}/admin/kyc/${id}/verify`, {
-                    method: "POST",
-                    headers: medusaHeaders,
-                    credentials: "include",
-                });
-                return response.json();
-            },
-            reject: async (id: string, reason: string) => {
-                const response = await fetch(`${MEDUSA_BACKEND_URL}/admin/kyc/${id}/reject`, {
-                    method: "POST",
-                    headers: medusaHeaders,
-                    body: JSON.stringify({ reason }),
-                    credentials: "include",
-                });
-                return response.json();
-            }
-        }
     }
 };
 
@@ -364,14 +390,17 @@ export const mapMedusaToDeal = (medusaProduct: any) => {
         price = parseFloat(medusaProduct.metadata.price as string);
     }
 
-    const minInvestment = medusaProduct.metadata?.min_investment ? parseInt(medusaProduct.metadata.min_investment as string) : 1;
+    const minInvestment = readNumberMetadata(medusaProduct.metadata, ["min_investment", "minimum_investment"]) || 1;
+    const sector = normalizeSector(medusaProduct);
+    const marketCap = normalizeMarketCap(medusaProduct);
 
     return {
         id: medusaProduct.id,
         handle: medusaProduct.handle,
         name: medusaProduct.title,
         logo: medusaProduct.thumbnail || "",
-        sector: medusaProduct.subtitle || "General / Unlisted",
+        sector,
+        marketCap,
         price: price,
         minInvestment: minInvestment,
         isin: medusaProduct.metadata?.isin || "",

@@ -1,109 +1,137 @@
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
-import { Container, Heading, Text, Button, StatusBadge } from "@medusajs/ui"
+import { Button, Container, Heading, StatusBadge, Text } from "@medusajs/ui"
+import {
+  canApproveKyc,
+  canRejectKyc,
+  getKycBadgeColor,
+  getKycLabel,
+  toKycRecord,
+  updateCustomerKycStatus,
+} from "../lib/kyc"
 
 const CustomerKycWidget = ({ data: customer }: { data: any }) => {
-  const customerId = customer.id
-  const metadata = customer.metadata || {}
-  
-  if (!metadata.kyc_status && !metadata.kyc_pan_number) {
+  const [isUpdating, setIsUpdating] = useState(false)
+  const request = toKycRecord(customer)
+
+  if (!request.panNumber && !request.dematNumber && request.status === "none") {
     return null
   }
 
-  const handleAction = async (e: React.MouseEvent, status: 'approved' | 'rejected') => {
+  const handleAction = async (
+    e: React.MouseEvent,
+    status: "approved" | "rejected"
+  ) => {
     e.preventDefault()
-    
-    console.log(`[KYC WIDGET] Triggering ${status} for customer: ${customerId}`);
-    
+
+    const reviewNotes =
+      status === "rejected"
+        ? window.prompt(
+            "Enter rejection reason",
+            request.rejectionReason || "Documents unclear"
+          ) || "Documents unclear"
+        : "Approved by admin"
+
+    setIsUpdating(true)
+
     try {
-      const response = await fetch(`/admin/kyc/${customerId}`, {
-        method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({ 
-          status,
-          review_notes: status === 'rejected' ? "Documents unclear" : "Approved by admin"
-        })
-      })
+      await updateCustomerKycStatus(
+        request.customerId,
+        request.metadata,
+        status,
+        reviewNotes
+      )
 
-      console.log(`[KYC WIDGET] Response status: ${response.status}`);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to update KYC status")
-      }
-
-      console.log(`[KYC WIDGET] Success! Reloading to reflect metadata changes...`);
-      // Force a reload to refresh the customer data which includes metadata
       window.location.reload()
-    } catch (e: any) {
-      console.error(`[KYC WIDGET] Error:`, e);
-      alert(`Error: ${e.message}`);
+    } catch (error: any) {
+      console.error("Failed to update customer KYC:", error)
+      window.alert(`Error: ${error.message}`)
+    } finally {
+      setIsUpdating(false)
     }
   }
 
   return (
-    <Container className="mt-4 p-6 font-['Space_Grotesk']">
-      <div className="flex items-center justify-between mb-4">
+    <Container className="mt-4 p-6">
+      <div className="mb-4 flex items-center justify-between">
         <Heading level="h2">KYC Details</Heading>
-        <StatusBadge color={
-          metadata.kyc_status === 'approved' || metadata.kyc_status === 'verified' ? 'green' : 
-          metadata.kyc_status === 'rejected' ? 'red' : 
-          metadata.kyc_status === 'pending' || metadata.kyc_status === 'submitted' ? 'orange' : 'grey'
-        }>
-          {(metadata.kyc_status || "UNKNOWN").toUpperCase()}
+        <StatusBadge color={getKycBadgeColor(request.status)}>
+          {getKycLabel(request.status)}
         </StatusBadge>
       </div>
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="mb-6 grid grid-cols-2 gap-4">
         <div>
-          <Text size="small" className="text-ui-fg-subtle font-semibold">PAN Number</Text>
-          <Text>{metadata.kyc_pan_number || "N/A"}</Text>
+          <Text size="small" className="font-semibold text-ui-fg-subtle">
+            PAN Number
+          </Text>
+          <Text>{request.panNumber || "N/A"}</Text>
         </div>
         <div>
-          <Text size="small" className="text-ui-fg-subtle font-semibold">Aadhaar Number</Text>
-          <Text>{metadata.aadhaar_number || metadata.kyc_aadhaar_number || "N/A"}</Text>
+          <Text size="small" className="font-semibold text-ui-fg-subtle">
+            Aadhaar Number
+          </Text>
+          <Text>{request.aadhaarNumber || "N/A"}</Text>
         </div>
         <div>
-          <Text size="small" className="text-ui-fg-subtle font-semibold">DP Name</Text>
-          <Text>{metadata.kyc_dp_name || "N/A"}</Text>
+          <Text size="small" className="font-semibold text-ui-fg-subtle">
+            DP Name
+          </Text>
+          <Text>{request.dpName || "N/A"}</Text>
         </div>
         <div>
-          <Text size="small" className="text-ui-fg-subtle font-semibold">Demat Number</Text>
-          <Text>{metadata.kyc_demat_number || "N/A"}</Text>
+          <Text size="small" className="font-semibold text-ui-fg-subtle">
+            Demat Number
+          </Text>
+          <Text>{request.dematNumber || "N/A"}</Text>
         </div>
       </div>
-      <div className="flex items-center gap-4 mb-6">
-        {metadata.kyc_pan_file_url && (
-            <a href={metadata.kyc_pan_file_url} target="_blank" rel="noreferrer">
-                <Button type="button" variant="secondary" size="small">View PAN File</Button>
-            </a>
+      <div className="mb-6 flex items-center gap-4">
+        {request.panFileUrl && (
+          <a href={request.panFileUrl} target="_blank" rel="noreferrer">
+            <Button type="button" variant="secondary" size="small">
+              View PAN File
+            </Button>
+          </a>
         )}
-        {metadata.kyc_cmr_file_url && (
-            <a href={metadata.kyc_cmr_file_url} target="_blank" rel="noreferrer">
-                <Button type="button" variant="secondary" size="small">View CMR Copy</Button>
-            </a>
+        {request.cmrFileUrl && (
+          <a href={request.cmrFileUrl} target="_blank" rel="noreferrer">
+            <Button type="button" variant="secondary" size="small">
+              View CMR Copy
+            </Button>
+          </a>
         )}
       </div>
+      {request.rejectionReason && (
+        <div className="mb-6 rounded-md border border-ui-border-error bg-ui-bg-error p-4">
+          <Text size="small" className="font-semibold text-ui-fg-error">
+            Rejection Reason
+          </Text>
+          <Text size="small">{request.rejectionReason}</Text>
+        </div>
+      )}
       <div className="flex gap-2">
-        <Button 
-          type="button"
-          variant="primary" 
-          size="small" 
-          onClick={(e) => handleAction(e, 'approved')} 
-          disabled={metadata.kyc_status === 'approved' || metadata.kyc_status === 'verified'}
-        >
-          Approve
-        </Button>
-        <Button 
-          type="button"
-          variant="danger" 
-          size="small" 
-          onClick={(e) => handleAction(e, 'rejected')} 
-          disabled={metadata.kyc_status === 'rejected'}
-        >
-          Reject
-        </Button>
+        {canApproveKyc(request.status) && (
+          <Button
+            type="button"
+            variant="primary"
+            size="small"
+            isLoading={isUpdating}
+            onClick={(e) => handleAction(e, "approved")}
+          >
+            Approve
+          </Button>
+        )}
+        {canRejectKyc(request.status) && (
+          <Button
+            type="button"
+            variant="danger"
+            size="small"
+            isLoading={isUpdating}
+            onClick={(e) => handleAction(e, "rejected")}
+          >
+            Reject
+          </Button>
+        )}
       </div>
     </Container>
   )

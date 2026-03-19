@@ -2,6 +2,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Hero from "@/components/home/Hero";
 import FeaturedDeals from "@/components/home/FeaturedDeals";
+import TrendingSectors from "@/components/home/TrendingSectors";
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
@@ -9,6 +10,7 @@ export default function Home() {
       <main className="flex-grow">
         <Hero />
         <FeaturedDeals />
+        <TrendingSectors />
         {/* Education Section will go here */}
         <EducationSection />
         {/* Newsletter Section will go here */}

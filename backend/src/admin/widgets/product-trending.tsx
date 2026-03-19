@@ -1,23 +1,33 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
-import { Container, Heading, Text, Switch, toast } from "@medusajs/ui"
+import { Container, Heading, Switch, Text, toast } from "@medusajs/ui"
+
+const isProductTrending = (metadata?: Record<string, any>) => {
+  return metadata?.is_trending === true || metadata?.is_trending === "true"
+}
 
 const ProductTrendingWidget = ({ data: product }: { data: any }) => {
-  const [isTrending, setIsTrending] = useState(product?.metadata?.is_trending === true)
+  const [isTrending, setIsTrending] = useState(isProductTrending(product?.metadata))
   const [isUpdating, setIsUpdating] = useState(false)
+
+  useEffect(() => {
+    setIsTrending(isProductTrending(product?.metadata))
+  }, [product?.id, product?.metadata])
 
   const handleToggle = async (checked: boolean) => {
     setIsUpdating(true)
     try {
       const response = await fetch(`/admin/products/${product.id}`, {
-        method: "POST", // Medusa V2 uses POST for updates
+        method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           metadata: {
-            ...product.metadata,
+            ...(product.metadata || {}),
             is_trending: checked,
+            trending_updated_at: new Date().toISOString(),
           },
         }),
       })
@@ -44,9 +54,9 @@ const ProductTrendingWidget = ({ data: product }: { data: any }) => {
     <Container className="p-6">
       <div className="flex items-center justify-between">
         <div>
-          <Heading level="h2">Trending Status</Heading>
+          <Heading level="h2">Trending Product</Heading>
           <Text size="small" className="text-ui-fg-subtle">
-            Toggle whether this share appears in the "Trending Shares" section on the homepage.
+            Control whether this product appears in the live trending section on the storefront.
           </Text>
         </div>
         <div className="flex items-center gap-x-2">
