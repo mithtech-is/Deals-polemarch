@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
-import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
-
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Deals | Polemarch - Unlisted Shares Marketplace",
   description: "Browse and buy unlisted shares with Polemarch. Modern fintech platform for unlisted share deals.",
+  icons: {
+    icon: "/assets/logos/polemarch_logo.png",
+    shortcut: "/assets/logos/polemarch_logo.png",
+    apple: "/assets/logos/polemarch_logo.png",
+  },
 };
 
 import { CartProvider } from "@/context/CartContext";
@@ -23,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${spaceGrotesk.variable} font-sans antialiased`}>
+      <body className="font-sans antialiased">
         <UserProvider>
           <ToastProvider>
             <CartProvider>

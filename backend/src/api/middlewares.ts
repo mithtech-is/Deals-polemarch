@@ -99,6 +99,24 @@ export default defineMiddlewares({
             ],
         },
         {
+            matcher: "/admin/product-seo*",
+            middlewares: [
+                authenticate("user", ["session", "bearer"]),
+            ],
+        },
+        {
+            matcher: "/admin/category-seo*",
+            middlewares: [
+                authenticate("user", ["session", "bearer"]),
+            ],
+        },
+        {
+            matcher: "/admin/posthog-status*",
+            middlewares: [
+                authenticate("user", ["session", "bearer"]),
+            ],
+        },
+        {
             matcher: "/store/notifications*",
             middlewares: [
                 authenticate("customer", ["session", "bearer"]),

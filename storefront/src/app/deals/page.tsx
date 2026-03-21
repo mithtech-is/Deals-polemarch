@@ -5,6 +5,8 @@ import MarketplaceClient from "@/components/deals/MarketplaceClient";
 import { medusaClient, mapMedusaToDeal } from "@/lib/medusa";
 import { Deal } from "@/data/deals";
 
+export const dynamic = "force-dynamic";
+
 export default async function MarketplacePage() {
     let deals: Deal[] = [];
     try {

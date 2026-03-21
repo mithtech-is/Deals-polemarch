@@ -5,10 +5,24 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   try {
     const { id } = req.params
     const productModule = req.scope.resolve(Modules.PRODUCT) as any
+    let product = null
 
-    const product = await productModule.retrieveProduct(id, {
-      relations: ["variants"],
-    })
+    try {
+      product = await productModule.retrieveProduct(id, {
+        relations: ["variants"],
+      })
+    } catch (error) {
+      product = null
+    }
+
+    if (!product) {
+      const products = await productModule.listProducts(
+        { handle: id },
+        { relations: ["variants"], take: 1 }
+      )
+
+      product = Array.isArray(products) ? products[0] : null
+    }
 
     if (!product || product.deleted_at) {
       return res.status(404).json({ message: "Product not found" })

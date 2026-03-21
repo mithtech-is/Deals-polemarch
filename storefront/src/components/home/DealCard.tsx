@@ -4,6 +4,7 @@ import { ArrowRight, TrendingUp } from "lucide-react";
 
 interface DealCardProps {
     id: string;
+    handle?: string;
     name: string;
     logo: string;
     sector: string;
@@ -14,9 +15,9 @@ interface DealCardProps {
     isTrending?: boolean;
 }
 
-const DealCard = ({ id, name, logo, sector, price, quantity, summary, isTrending }: DealCardProps) => {
+const DealCard = ({ id, handle, name, logo, sector, price, quantity, summary, isTrending }: DealCardProps) => {
     return (
-        <Link href={`/deals/${id}`} className="block">
+        <Link href={`/deals/${handle || id}`} className="block">
             <div className="group relative h-full rounded-3xl border border-slate-100 bg-white p-6 transition-all duration-500 hover:border-primary/20 hover:shadow-2xl hover:shadow-primary/5">
                 {isTrending && (
                     <div className="absolute top-4 right-4 z-10">

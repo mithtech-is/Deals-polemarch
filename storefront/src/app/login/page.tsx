@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
@@ -8,7 +8,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useUser } from "@/context/UserContext";
 
-export default function LoginPage() {
+function LoginPageContent() {
     const router = useRouter();
     const { login } = useUser();
     const searchParams = useSearchParams();
@@ -130,5 +130,13 @@ export default function LoginPage() {
             </main>
             <Footer />
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={null}>
+            <LoginPageContent />
+        </Suspense>
     );
 }

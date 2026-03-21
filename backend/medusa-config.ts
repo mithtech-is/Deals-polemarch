@@ -3,6 +3,26 @@ import path from 'path'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 
+const analyticsModule = process.env.POSTHOG_EVENTS_API_KEY
+    ? {
+        analytics: {
+            resolve: "@medusajs/medusa/analytics",
+            options: {
+                providers: [
+                    {
+                        resolve: "@medusajs/analytics-posthog",
+                        id: "posthog",
+                        options: {
+                            posthogEventsKey: process.env.POSTHOG_EVENTS_API_KEY,
+                            posthogHost: process.env.POSTHOG_HOST || "https://eu.i.posthog.com",
+                        },
+                    },
+                ],
+            },
+        },
+    }
+    : {}
+
 export default defineConfig({
     projectConfig: {
         databaseUrl: process.env.DATABASE_URL,
@@ -17,9 +37,16 @@ export default defineConfig({
     admin: {
         disable: false,
     },
+    plugins: [
+        {
+            resolve: "@meduline/medusa-plugin-product-seo",
+            options: {},
+        },
+    ],
     modules: {
         polemarch: {
             resolve: "./src/modules/polemarch/index.js",
         },
+        ...analyticsModule,
     },
 })
