@@ -38,9 +38,8 @@ const Footer = () => {
                         <h4 className="mb-6 font-bold">Platform</h4>
                         <ul className="space-y-4">
                             <li><Link href="/deals" className="text-sm text-slate-600 transition-colors hover:text-primary">Unlisted Shares</Link></li>
-                            <li><Link href="/pre-ipo" className="text-sm text-slate-600 transition-colors hover:text-primary">Pre-IPO Deals</Link></li>
-                            <li><Link href="/how-it-works" className="text-sm text-slate-600 transition-colors hover:text-primary">How it works</Link></li>
-                            <li><Link href="/pricing" className="text-sm text-slate-600 transition-colors hover:text-primary">Pricing</Link></li>
+                            <li><Link href="/why-choose-us" className="text-sm text-slate-600 transition-colors hover:text-primary">Why Choose Us</Link></li>
+                            <li><Link href="/partner-with-us" className="text-sm text-slate-600 transition-colors hover:text-primary">Partner With Us</Link></li>
                         </ul>
                     </div>
 
@@ -48,9 +47,9 @@ const Footer = () => {
                         <h4 className="mb-6 font-bold">Resources</h4>
                         <ul className="space-y-4">
                             <li><Link href="/knowledge" className="text-sm text-slate-600 transition-colors hover:text-primary">Knowledge Base</Link></li>
-                            <li><Link href="/blog" className="text-sm text-slate-600 transition-colors hover:text-primary">Blog</Link></li>
-                            <li><Link href="/glossary" className="text-sm text-slate-600 transition-colors hover:text-primary">Glossary</Link></li>
-                            <li><Link href="/faq" className="text-sm text-slate-600 transition-colors hover:text-primary">FAQs</Link></li>
+                            <li><Link href="/about" className="text-sm text-slate-600 transition-colors hover:text-primary">About Us</Link></li>
+                            <li><Link href="/careers" className="text-sm text-slate-600 transition-colors hover:text-primary">Careers</Link></li>
+                            <li><Link href="/sebi-guidelines" className="text-sm text-slate-600 transition-colors hover:text-primary">SEBI Guidelines</Link></li>
                         </ul>
                     </div>
 
@@ -78,10 +77,11 @@ const Footer = () => {
                         <p className="text-xs text-slate-500">
                             Copyright {new Date().getFullYear()} Polemarch Financial Services. All rights reserved.
                         </p>
-                        <div className="flex gap-6">
+                        <div className="flex flex-wrap gap-6">
                             <Link href="/privacy" className="text-xs text-slate-500 hover:text-primary">Privacy Policy</Link>
                             <Link href="/terms" className="text-xs text-slate-500 hover:text-primary">Terms of Service</Link>
                             <Link href="/disclaimer" className="text-xs text-slate-500 hover:text-primary">Risk Disclaimer</Link>
+                            <Link href="/cancellation-policy" className="text-xs text-slate-500 hover:text-primary">Cancellation Policy</Link>
                         </div>
                     </div>
                     <div className="mt-8 rounded-lg bg-slate-100 p-4">

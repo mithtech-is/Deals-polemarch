@@ -44,7 +44,7 @@ export default function DisclaimerPage() {
 
                             <h2 className="text-2xl font-bold mt-12 mb-6 text-slate-900 underline decoration-primary/30 underline-offset-8">No Regulatory Authorization</h2>
                             <p>
-                                Polemarch is not a stock exchange and does not intend to be recognized as one under the Securities Contracts (Regulation) Act, 1956. Polemarch is not authorized or registered with the Securities and Exchange Board of India (SEBI) to solicit public investments, act as a broker, portfolio manager, or investment advisor. Any services offered are limited to facilitating informational access to potential investment opportunities in the private market through registered intermediaries, wherever applicable.
+                                Polemarch is not a stock exchange and does not intend to be recognized as one under the Securities Contracts (Regulation) Act, 1956. Polemarch is not authorized or registered with the Securities and Exchange Board of India (SEBI) to solicit public investments, act as a broker, portfolio manager, or investment advisor. Any services offered are limited to facilitating access to information related to private market investment opportunities.
                             </p>
 
                             <h2 className="text-2xl font-bold mt-12 mb-6 text-slate-900 underline decoration-primary/30 underline-offset-8">Accuracy of Information</h2>
