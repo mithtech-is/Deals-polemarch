@@ -47,6 +47,7 @@ const Footer = () => {
                         <h4 className="mb-6 font-bold">Resources</h4>
                         <ul className="space-y-4">
                             <li><Link href="/knowledge" className="text-sm text-slate-600 transition-colors hover:text-primary">Knowledge Base</Link></li>
+                            <li><Link href="/cmr-copy" className="text-sm text-slate-600 transition-colors hover:text-primary">How to Get CMR Copy</Link></li>
                             <li><Link href="/about" className="text-sm text-slate-600 transition-colors hover:text-primary">About Us</Link></li>
                             <li><Link href="/careers" className="text-sm text-slate-600 transition-colors hover:text-primary">Careers</Link></li>
                             <li><Link href="/sebi-guidelines" className="text-sm text-slate-600 transition-colors hover:text-primary">SEBI Guidelines</Link></li>
