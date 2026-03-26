@@ -121,7 +121,7 @@ export default function PrivacyPage() {
                                 <div className="flex items-start gap-4">
                                     <MapPin className="h-6 w-6 text-primary mt-1" />
                                     <div>
-                                        <p className="font-bold text-slate-900">Polemarch Financial Services</p>
+                                        <p className="font-bold text-slate-900">Polemarch</p>
                                         <p className="text-slate-600">616/A, 9th Cross Rd, E block, 2nd Stage, Rajajinagar, Bengaluru, Karnataka 560010</p>
                                     </div>
                                 </div>

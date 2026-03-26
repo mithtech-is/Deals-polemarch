@@ -5,9 +5,9 @@ export const metadata: Metadata = {
   title: "Deals | Polemarch - Unlisted Shares Marketplace",
   description: "Browse and buy unlisted shares with Polemarch. Modern fintech platform for unlisted share deals.",
   icons: {
-    icon: "/assets/logos/polemarch_logo.png",
-    shortcut: "/assets/logos/polemarch_logo.png",
-    apple: "/assets/logos/polemarch_logo.png",
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/icon.png",
   },
 };
 

@@ -76,7 +76,7 @@ const Footer = () => {
                 <div className="border-t pt-8">
                     <div className="flex flex-col justify-between gap-4 md:flex-row">
                         <p className="text-xs text-slate-500">
-                            Copyright {new Date().getFullYear()} Polemarch Financial Services. All rights reserved.
+                            Copyright {new Date().getFullYear()} Polemarch. All rights reserved.
                         </p>
                         <div className="flex flex-wrap gap-6">
                             <Link href="/privacy" className="text-xs text-slate-500 hover:text-primary">Privacy Policy</Link>

@@ -36,7 +36,8 @@ export default function CareersPage() {
         "Modern office in Bengaluru",
     ];
 
-    const openings = [
+    const openings: any[] = [
+        /* 
         {
             title: "Senior Full Stack Developer",
             department: "Engineering",
@@ -44,41 +45,8 @@ export default function CareersPage() {
             type: "Full-time",
             experience: "4+ years",
         },
-        {
-            title: "Product Manager",
-            department: "Product",
-            location: "Bengaluru",
-            type: "Full-time",
-            experience: "3+ years",
-        },
-        {
-            title: "Compliance Officer",
-            department: "Legal & Compliance",
-            location: "Bengaluru",
-            type: "Full-time",
-            experience: "3+ years",
-        },
-        {
-            title: "Customer Success Manager",
-            department: "Operations",
-            location: "Bengaluru",
-            type: "Full-time",
-            experience: "2+ years",
-        },
-        {
-            title: "Business Development Executive",
-            department: "Sales",
-            location: "Bengaluru",
-            type: "Full-time",
-            experience: "2+ years",
-        },
-        {
-            title: "Marketing Specialist",
-            department: "Marketing",
-            location: "Bengaluru (Remote)",
-            type: "Full-time",
-            experience: "2+ years",
-        },
+        ... add more jobs here
+        */
     ];
 
     return (
@@ -140,7 +108,7 @@ export default function CareersPage() {
                             <div className="p-8 rounded-3xl bg-white/5 border border-white/10">
                                 <div className="text-center">
                                     <p className="text-sm text-slate-400 uppercase tracking-wider mb-2">Current Openings</p>
-                                    <p className="text-5xl font-bold mb-2">{openings.length}+</p>
+                                    <p className="text-5xl font-bold mb-2">{openings.length}</p>
                                     <p className="text-slate-400">Positions available</p>
                                 </div>
                             </div>
@@ -155,43 +123,56 @@ export default function CareersPage() {
                             <h2 className="text-3xl font-bold mb-4">Open Positions</h2>
                             <p className="text-foreground/60">Find your next opportunity</p>
                         </div>
-                        <div className="space-y-4">
-                            {openings.map((job) => (
-                                <div
-                                    key={job.title}
-                                    className="flex flex-col md:flex-row md:items-center gap-4 p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:shadow-lg transition-all group"
-                                >
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <Briefcase className="h-5 w-5 text-primary" />
-                                            <h3 className="text-lg font-bold group-hover:text-primary transition-colors">{job.title}</h3>
-                                        </div>
-                                        <p className="text-sm text-foreground/50">{job.department}</p>
-                                    </div>
-                                    <div className="flex flex-wrap gap-4 text-sm text-foreground/60">
-                                        <span className="flex items-center gap-1">
-                                            <MapPin className="h-4 w-4" />
-                                            {job.location}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <Clock className="h-4 w-4" />
-                                            {job.type}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <GraduationCap className="h-4 w-4" />
-                                            {job.experience}
-                                        </span>
-                                    </div>
-                                    <Link
-                                        href="mailto:careers@polemarch.in"
-                                        className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-medium hover:bg-primary/90 transition-all"
+                        {openings.length > 0 ? (
+                            <div className="space-y-4">
+                                {openings.map((job) => (
+                                    <div
+                                        key={job.title}
+                                        className="flex flex-col md:flex-row md:items-center gap-4 p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:shadow-lg transition-all group"
                                     >
-                                        Apply
-                                        <ArrowRight className="h-4 w-4" />
-                                    </Link>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <Briefcase className="h-5 w-5 text-primary" />
+                                                <h3 className="text-lg font-bold group-hover:text-primary transition-colors">{job.title}</h3>
+                                            </div>
+                                            <p className="text-sm text-foreground/50">{job.department}</p>
+                                        </div>
+                                        <div className="flex flex-wrap gap-4 text-sm text-foreground/60">
+                                            <span className="flex items-center gap-1">
+                                                <MapPin className="h-4 w-4" />
+                                                {job.location}
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                                <Clock className="h-4 w-4" />
+                                                {job.type}
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                                <GraduationCap className="h-4 w-4" />
+                                                {job.experience}
+                                            </span>
+                                        </div>
+                                        <Link
+                                            href="mailto:careers@polemarch.in"
+                                            className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-medium hover:bg-primary/90 transition-all"
+                                        >
+                                            Apply
+                                            <ArrowRight className="h-4 w-4" />
+                                        </Link>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="max-w-3xl mx-auto p-12 rounded-[40px] bg-slate-50 border border-slate-100 text-center">
+                                <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center shadow-sm border border-slate-100 mx-auto mb-6">
+                                    <Briefcase className="h-8 w-8 text-slate-300" />
                                 </div>
-                            ))}
-                        </div>
+                                <h3 className="text-xl font-bold text-slate-900 mb-2">No active openings right now</h3>
+                                <p className="text-slate-500 leading-relaxed">
+                                    We're not currently hiring for any specific roles, but we're always looking for exceptional talent.
+                                    If you're passionate about what we're building, feel free to send us your resume.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </section>
 

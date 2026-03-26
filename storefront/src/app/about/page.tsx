@@ -7,13 +7,13 @@ export default function AboutPage() {
   return (
     <div className="flex flex-col min-h-screen bg-white text-slate-900 font-['Space_Grotesk']">
       <Navbar />
-      
+
       <main className="flex-grow">
         {/* Hero Section */}
         <section className="relative py-24 px-6 overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full bg-slate-50/50 -z-10" />
           <div className="absolute top-1/4 -right-20 w-80 h-80 bg-primary/5 rounded-full blur-[100px] animate-pulse" />
-          
+
           <div className="container mx-auto max-w-5xl">
             <h1 className="text-5xl md:text-7xl font-bold mb-8 tracking-tight">
               About <span className="text-primary font-black">Us</span>
@@ -47,26 +47,21 @@ export default function AboutPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              <StatCard 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              <StatCard
                 icon={<BarChart3 className="h-8 w-8 text-primary" />}
                 title="Transactions Executed"
                 value="₹80 Cr+"
                 desc="From deal structuring to final settlement, our team has executed high-value secondary market transactions across sought-after pre-IPO names."
               />
-              <StatCard 
-                icon={<Users className="h-8 w-8 text-primary" />}
-                title="Shares Traded"
-                value="30 Lakhs+"
-                desc="We have handled millions of shares across private companies, helping investors unlock value while strictly adhering to regulatory and compliance standards."
-              />
-              <StatCard 
+
+              <StatCard
                 icon={<Globe className="h-8 w-8 text-primary" />}
                 title="Market Presence"
                 value="Active Since 2019"
                 desc="With a strong presence in India’s unlisted share market, we have built credibility and trust among investors, founders, and early-stage stakeholders."
               />
-              <StatCard 
+              <StatCard
                 icon={<Zap className="h-8 w-8 text-primary" />}
                 title="High-Value Opportunities"
                 value="Pre-IPO Access"
@@ -84,22 +79,22 @@ export default function AboutPage() {
           </div>
 
           <div className="container mx-auto max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-8">
-            <ApproachCard 
+            <ApproachCard
               icon={<TrendingUp className="h-8 w-8" />}
               title="Pre-IPO & Unlisted Shares"
               desc="Curated access to companies in their pre-listing phase, enabling early participation ahead of public market discovery."
             />
-            <ApproachCard 
+            <ApproachCard
               icon={<Handshake className="h-8 w-8" />}
               title="ESOP Exit Solutions"
               desc="Facilitating compliant and structured equity transfers for employees seeking liquidity."
             />
-            <ApproachCard 
+            <ApproachCard
               icon={<Target className="h-8 w-8" />}
               title="Liquidity Solutions for Investors"
               desc="Defined exit pathways for investors looking to monetize holdings within established execution frameworks."
             />
-            <ApproachCard 
+            <ApproachCard
               icon={<Lock className="h-8 w-8" />}
               title="Curated IPO Opportunities"
               desc="Selective access to companies preparing for listing, positioned ahead of exchange debut."

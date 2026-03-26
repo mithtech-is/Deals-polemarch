@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { medusaClient } from "@/lib/medusa";
 import { useToast } from "./ToastContext";
 
@@ -34,6 +35,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     const [cartId, setCartId] = useState<string | null>(null);
     const [items, setItems] = useState<CartItem[]>([]);
     const [regions, setRegions] = useState<any[]>([]);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     const refreshCart = useCallback(async (id: string) => {
         try {
@@ -100,7 +102,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             const currentCartId = await getOrCreateCart();
             await medusaClient.carts.addItems(currentCartId, variantId, quantity, { min_investment: minInvestment });
             await refreshCart(currentCartId);
-            showToast("Shares added to cart successfully!", "success");
+            setShowSuccessModal(true);
         } catch (error: any) {
             console.error("Error adding item:", error);
             showToast(error.message || "Failed to add shares to cart.", "error");
@@ -141,6 +143,39 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     return (
         <CartContext.Provider value={{ items, addItem, removeItem, updateItem, clearCart, totalItems, totalAmount, cartId }}>
             {children}
+
+            {showSuccessModal && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl p-6 w-[90%] max-w-md shadow-xl text-center transform animate-in zoom-in-95 duration-200">
+                        <div className="text-green-600 text-3xl mb-2">✓</div>
+
+                        <h2 className="text-lg font-bold mb-2">
+                            Shares added to cart
+                        </h2>
+
+                        <p className="text-sm text-slate-500 mb-4">
+                            Your selected shares have been successfully added.
+                        </p>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowSuccessModal(false)}
+                                className="flex-1 font-bold text-slate-700 border border-slate-300 rounded-xl py-2 hover:bg-slate-50 transition-colors"
+                            >
+                                Continue Browsing
+                            </button>
+
+                            <Link
+                                href="/cart"
+                                onClick={() => setShowSuccessModal(false)}
+                                className="flex-1 bg-[#083021] flex justify-center items-center text-white rounded-xl py-2 font-bold hover:bg-[#052015] transition-colors"
+                            >
+                                Go to Cart
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
         </CartContext.Provider>
     );
 };

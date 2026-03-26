@@ -36,7 +36,7 @@ const DealCard = ({ id, handle, name, logo, sector, price, quantity, summary, is
                             width={56}
                             height={56}
                             unoptimized={logo?.startsWith("http")}
-                            className="object-contain grayscale transition-all group-hover:grayscale-0"
+                            className="object-contain transition-all"
                         />
                     </div>
                     <div>

@@ -78,7 +78,7 @@ export const medusaClient = {
             const query = new URLSearchParams();
             if (regionId) query.append("region_id", regionId);
 
-            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/marketplace-products?${query.toString()}`, {
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/products?${query.toString()}`, {
                 headers: medusaHeaders,
                 cache: "no-store",
                 credentials: "include",
@@ -90,13 +90,19 @@ export const medusaClient = {
             const query = new URLSearchParams();
             if (regionId) query.append("region_id", regionId);
 
-            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/marketplace-products/${id}?${query.toString()}`, {
+            // Fetch from standard products endpoint to receive calculated pricing
+            const isHandle = !id.startsWith("prod_");
+            if (isHandle) query.append("handle", id);
+            else query.append("id", id);
+
+            const response = await fetch(`${MEDUSA_BACKEND_URL}/store/products?${query.toString()}`, {
                 headers: medusaHeaders,
                 cache: "no-store",
                 credentials: "include",
             });
             if (!response.ok) throw new Error("Failed to fetch product");
-            return response.json();
+            const data = await response.json();
+            return { product: data.products?.[0] || null };
         },
     },
     regions: {
@@ -362,33 +368,11 @@ export const medusaClient = {
 export const mapMedusaToDeal = (medusaProduct: any) => {
     // In Medusa V2, we prefer variants[0].calculated_price
     const variant = medusaProduct.variants?.[0];
-    const prices = variant?.prices || [];
-    const calculatedPrice = variant?.calculated_price;
 
-    // Use calculated price if available (Medusa V2)
-    let price = 0;
-    if (calculatedPrice) {
-        // Use calculated price directly as whole number
-        price = calculatedPrice.calculated_amount;
-    } else {
-        // Fallback to old variants[0].prices (Medusa V1/Legacy)
-        const inrPrice = prices.find((p: any) => p.currency_code?.toLowerCase() === "inr");
-        let rawAmount = 0;
-        if (inrPrice) {
-            rawAmount = inrPrice.amount;
-        } else if (prices.length > 0) {
-            rawAmount = prices[0].amount;
-        }
-
-        if (rawAmount > 0) {
-            price = rawAmount;
-        }
-    }
-
-    // Secondary fallback to metadata (if user added it there)
-    if (price === 0 && medusaProduct.metadata?.price) {
-        price = parseFloat(medusaProduct.metadata.price as string);
-    }
+    const price =
+        variant?.calculated_price?.calculated_amount != null
+            ? variant.calculated_price.calculated_amount
+            : 0;
 
     const minInvestment = readNumberMetadata(medusaProduct.metadata, ["min_investment", "minimum_investment"]) || 1;
     const sector = normalizeSector(medusaProduct);
@@ -398,7 +382,7 @@ export const mapMedusaToDeal = (medusaProduct: any) => {
         id: medusaProduct.id,
         handle: medusaProduct.handle,
         name: medusaProduct.title,
-        logo: medusaProduct.thumbnail || "",
+        logo: medusaProduct.thumbnail || medusaProduct.images?.[0]?.url || "/assets/logos/placeholder.png",
         sector,
         marketCap,
         price: price,
@@ -413,5 +397,20 @@ export const mapMedusaToDeal = (medusaProduct: any) => {
             : medusaProduct.metadata?.financials || [],
         metadata: medusaProduct.metadata || {},
         variants: medusaProduct.variants || [],
+        peRatio: medusaProduct.metadata?.pe_ratio,
+        roe: medusaProduct.metadata?.roe,
+        revenue: medusaProduct.metadata?.revenue,
+        founded: medusaProduct.metadata?.founded,
+        headquarters: medusaProduct.metadata?.headquarters,
+        valuation: medusaProduct.metadata?.valuation,
+        faceValue: medusaProduct.metadata?.face_value,
+        shareType: medusaProduct.metadata?.share_type,
+        depository: medusaProduct.metadata?.depository,
+        lotSize: medusaProduct.metadata?.lot_size,
+        availability: medusaProduct.metadata?.availability_percent,
+        revenueValue: medusaProduct.metadata?.revenue_value,
+        profitValue: medusaProduct.metadata?.profit_value,
+        revenueGrowth: medusaProduct.metadata?.revenue_growth,
+        profitGrowth: medusaProduct.metadata?.profit_growth
     };
 };

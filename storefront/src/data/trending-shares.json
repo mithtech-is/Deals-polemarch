@@ -1,0 +1,38 @@
+[
+    {
+        "name": "MobiKwik",
+        "logo": "",
+        "handle": "mobikwik",
+        "sector": "Fintech"
+    },
+    {
+        "name": "Reliance Retail",
+        "logo": "",
+        "handle": "reliance-retail",
+        "sector": "Retail"
+    },
+    {
+        "name": "Tata Technologies",
+        "logo": "",
+        "handle": "tata-technologies",
+        "sector": "Technology"
+    },
+    {
+        "name": "HDB Financial",
+        "logo": "",
+        "handle": "hdb-financial",
+        "sector": "NBFC"
+    },
+    {
+        "name": "NSE",
+        "logo": "",
+        "handle": "nse",
+        "sector": "Stock Exchange"
+    },
+    {
+        "name": "Pharmeasy",
+        "logo": "",
+        "handle": "pharmeasy",
+        "sector": "Healthtech"
+    }
+]

@@ -22,6 +22,25 @@ export interface Deal {
     }[];
     metadata?: Record<string, any>;
     variants?: any[];
+
+    peRatio?: number;
+    roe?: number;
+    revenue?: string;
+
+    founded?: string;
+    headquarters?: string;
+    valuation?: string;
+    faceValue?: string;
+    shareType?: string;
+    depository?: string;
+
+    lotSize?: number;
+    availability?: number;
+
+    revenueValue?: string;
+    profitValue?: string;
+    revenueGrowth?: string;
+    profitGrowth?: string;
 }
 
 // MIGRATED_DEALS removed - using Medusa backend as source of truth.
