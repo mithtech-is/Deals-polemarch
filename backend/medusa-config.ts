@@ -1,4 +1,5 @@
 import { loadEnv, defineConfig } from '@medusajs/framework/utils'
+import { Modules } from '@medusajs/utils'
 import path from 'path'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
@@ -39,6 +40,22 @@ export default defineConfig({
     },
     plugins: [],
     modules: {
+        [Modules.FILE]: {
+            resolve: "@medusajs/file",
+            options: {
+                providers: [
+                    {
+                        resolve: "@medusajs/file-local",
+                        id: "local",
+                        options: {
+                            upload_dir: path.join(process.cwd(), "static"),
+                            private_upload_dir: path.join(process.cwd(), "static"),
+                            backend_url: process.env.MEDUSA_BACKEND_URL || "https://backbone4rc.polemarch.in",
+                        },
+                    },
+                ],
+            },
+        },
         polemarch: {
             resolve: "./src/modules/polemarch/index.js",
         },
