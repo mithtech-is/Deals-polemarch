@@ -48,23 +48,45 @@ const headers = {
   "x-publishable-api-key": MEDUSA_PUBLISHABLE_KEY,
 };
 
+const isConnectionRefusedError = (error: unknown) => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const cause = error.cause;
+
+  if (cause instanceof Error) {
+    return "code" in cause && cause.code === "ECONNREFUSED";
+  }
+
+  return false;
+};
+
 export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> => {
   const query = new URLSearchParams({
     limit: "1000",
   });
 
-  const response = await fetch(`${MEDUSA_BACKEND_URL}/store/marketplace-products?${query.toString()}`, {
-    headers,
-    cache: "no-store",
-  });
+  try {
+    const response = await fetch(`${MEDUSA_BACKEND_URL}/store/marketplace-products?${query.toString()}`, {
+      headers,
+      cache: "no-store",
+    });
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch marketplace products");
+    if (!response.ok) {
+      throw new Error("Failed to fetch marketplace products");
+    }
+
+    const data = (await response.json()) as MarketplaceProductsResponse;
+
+    return Array.isArray(data.products) ? data.products : [];
+  } catch (error) {
+    if (isConnectionRefusedError(error)) {
+      return [];
+    }
+
+    throw error;
   }
-
-  const data = (await response.json()) as MarketplaceProductsResponse;
-
-  return Array.isArray(data.products) ? data.products : [];
 };
 
 const normalizeToken = (value?: string | null) => {

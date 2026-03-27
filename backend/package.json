@@ -10,7 +10,6 @@
     "dev": "medusa develop"
   },
   "dependencies": {
-    "@meduline/medusa-plugin-product-seo": "^0.0.8",
     "@medusajs/admin-sdk": "^2.13.3",
     "@medusajs/analytics-posthog": "^2.13.4",
     "@medusajs/dashboard": "^2.13.3",

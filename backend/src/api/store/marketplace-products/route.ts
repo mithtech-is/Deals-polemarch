@@ -11,7 +11,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
       {
         take: Number(limit) || 1000,
         skip: Number(offset) || 0,
-        relations: ["variants"],
+        relations: ["variants", "collection", "categories"],
       }
     )
 

@@ -37,12 +37,7 @@ export default defineConfig({
     admin: {
         disable: false,
     },
-    plugins: [
-        {
-            resolve: "@meduline/medusa-plugin-product-seo",
-            options: {},
-        },
-    ],
+    plugins: [],
     modules: {
         polemarch: {
             resolve: "./src/modules/polemarch/index.js",
