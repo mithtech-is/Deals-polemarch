@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { Calculator, ArrowRight, Loader2 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { useRouter } from "next/navigation";
 
 interface InvestmentCalculatorProps {
-    product: any;
+    product: {
+        variants?: Array<{
+            id?: string;
+        }>;
+    };
     price: number;
     minLot?: number;
 }
@@ -15,10 +18,9 @@ const InvestmentCalculator = ({ product, price, minLot = 1 }: InvestmentCalculat
     const [quantity, setQuantity] = useState(1);
     const [isAdding, setIsAdding] = useState(false);
     const { addItem } = useCart();
-    const router = useRouter();
 
     const totalValue = quantity * price;
-    const stampDuty = totalValue * 0.00015; // Placeholder 0.015%
+    const stampDuty = totalValue * 0.00015;
     const totalPayable = totalValue + stampDuty;
 
     const handleAddItem = async () => {

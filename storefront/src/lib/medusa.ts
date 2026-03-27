@@ -382,6 +382,7 @@ export const mapMedusaToDeal = (medusaProduct: any) => {
         id: medusaProduct.id,
         handle: medusaProduct.handle,
         name: medusaProduct.title,
+        createdAt: medusaProduct.created_at || medusaProduct.updated_at || "",
         logo: medusaProduct.thumbnail || medusaProduct.images?.[0]?.url || "/assets/logos/placeholder.png",
         sector,
         marketCap,

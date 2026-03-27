@@ -6,13 +6,29 @@ import { medusaClient } from "@/lib/medusa";
 import { useToast } from "./ToastContext";
 
 interface CartItem {
-    id: string; // Line item ID from Medusa
+    id: string;
     variant_id: string;
     name: string;
     price: number;
     quantity: number;
     logo: string;
     minInvestment: number;
+}
+
+interface MedusaCartLineItem {
+    id: string;
+    variant_id: string;
+    title: string;
+    unit_price: number;
+    quantity: number;
+    thumbnail?: string | null;
+    metadata?: {
+        min_investment?: number;
+    } | null;
+}
+
+interface ErrorWithMessage {
+    message?: string;
 }
 
 interface CartContextType {
@@ -34,16 +50,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     const { showToast } = useToast();
     const [cartId, setCartId] = useState<string | null>(null);
     const [items, setItems] = useState<CartItem[]>([]);
-    const [regions, setRegions] = useState<any[]>([]);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     const refreshCart = useCallback(async (id: string) => {
         try {
-            console.log("Refreshing cart:", id);
             const { cart } = await medusaClient.carts.retrieve(id);
-            console.log("Cart fetched from backend:", cart);
-            console.log("Cart items count:", cart.items?.length || 0);
-            const mappedItems = cart.items.map((item: any) => ({
+            const mappedItems = cart.items.map((item: MedusaCartLineItem) => ({
                 id: item.id,
                 variant_id: item.variant_id,
                 name: item.title,
@@ -52,7 +64,6 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
                 logo: item.thumbnail || "",
                 minInvestment: item.metadata?.min_investment || 1,
             }));
-            console.log("Mapped items for state:", mappedItems);
             setItems(mappedItems);
         } catch (error) {
             console.error("Error refreshing cart:", error);
@@ -67,12 +78,9 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         const initCart = async () => {
             if (typeof window === "undefined") return;
 
-            // 1. Get regions to ensure we can create a cart
-            const { regions: availableRegions } = await medusaClient.regions.list();
-            setRegions(availableRegions);
+            await medusaClient.regions.list();
 
-            // 2. Check for existing cart ID
-            let existingId = localStorage.getItem(CART_ID_KEY);
+            const existingId = localStorage.getItem(CART_ID_KEY);
             if (existingId) {
                 setCartId(existingId);
                 await refreshCart(existingId);
@@ -103,9 +111,9 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             await medusaClient.carts.addItems(currentCartId, variantId, quantity, { min_investment: minInvestment });
             await refreshCart(currentCartId);
             setShowSuccessModal(true);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error adding item:", error);
-            showToast(error.message || "Failed to add shares to cart.", "error");
+            showToast((error as ErrorWithMessage)?.message || "Failed to add shares to cart.", "error");
         }
     };
 
@@ -147,7 +155,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             {showSuccessModal && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl p-6 w-[90%] max-w-md shadow-xl text-center transform animate-in zoom-in-95 duration-200">
-                        <div className="text-green-600 text-3xl mb-2">✓</div>
+                        <div className="text-green-600 text-3xl mb-2">OK</div>
 
                         <h2 className="text-lg font-bold mb-2">
                             Shares added to cart

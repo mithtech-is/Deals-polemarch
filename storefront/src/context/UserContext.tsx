@@ -3,11 +3,35 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { medusaClient } from "@/lib/medusa";
 
+interface AppUserMetadata {
+    kyc_status?: string | null;
+    kyc_rejection_reason?: string | null;
+    manual_investments?: unknown[];
+    [key: string]: unknown;
+}
+
+interface AppUser {
+    email?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+    metadata?: AppUserMetadata | null;
+}
+
+interface LoginPayload {
+    email: string;
+    password: string;
+}
+
+interface RegisterPayload extends LoginPayload {
+    first_name?: string;
+    last_name?: string;
+}
+
 interface UserContextType {
-    user: any | null;
+    user: AppUser | null;
     isLoading: boolean;
-    login: (data: any) => Promise<void>;
-    register: (data: any) => Promise<void>;
+    login: (data: LoginPayload) => Promise<void>;
+    register: (data: RegisterPayload) => Promise<void>;
     logout: () => void;
     checkSession: () => Promise<void>;
 }
@@ -15,19 +39,16 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
-    const [user, setUser] = useState<any | null>(null);
+    const [user, setUser] = useState<AppUser | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const checkSession = useCallback(async () => {
         setIsLoading(true);
         try {
-            console.log("Checking session...");
             const currentCustomer = await medusaClient.customers.retrieve();
             if (currentCustomer && currentCustomer.customer) {
-                console.log("User found:", currentCustomer.customer.email);
                 setUser(currentCustomer.customer);
             } else {
-                console.log("No user session found");
                 setUser(null);
             }
         } catch (error) {
@@ -42,12 +63,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         checkSession();
     }, [checkSession]);
 
-    const login = async (data: any) => {
+    const login = async (data: LoginPayload) => {
         await medusaClient.auth.login(data);
         await checkSession();
     };
 
-    const register = async (data: any) => {
+    const register = async (data: RegisterPayload) => {
         await medusaClient.auth.register(data);
     };
 

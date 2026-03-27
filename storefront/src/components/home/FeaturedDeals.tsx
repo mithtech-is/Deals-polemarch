@@ -1,13 +1,17 @@
 import Link from "next/link";
 import DealCard from "./DealCard";
-import { medusaClient, mapMedusaToDeal } from "@/lib/medusa";
-import { Deal } from "@/data/deals";
+import { type Deal } from "@/data/deals";
+import { getMarketplaceProducts } from "@/lib/api/trendingSectors";
+import { mapMedusaToDeal } from "@/lib/medusa";
 
 const FeaturedDeals = async () => {
     let deals: Deal[] = [];
     try {
-        const { products } = await medusaClient.products.list();
-        deals = products.map(mapMedusaToDeal).filter((d: Deal) => d.isTrending).slice(0, 3);
+        const products = await getMarketplaceProducts();
+        deals = products
+            .map(mapMedusaToDeal)
+            .filter((deal: Deal) => deal.isTrending)
+            .slice(0, 3);
     } catch (error) {
         console.error("Error fetching featured deals:", error);
     }
@@ -37,7 +41,7 @@ const FeaturedDeals = async () => {
                     <div className="rounded-[32px] border border-dashed border-slate-200 bg-white p-12 text-center">
                         <p className="text-lg font-bold text-slate-700">No trending shares available yet.</p>
                         <p className="mt-2 text-sm text-slate-500">
-                            Mark products as trending in admin and they will appear here automatically.
+                            Highlight shares from the dashboard and they will appear here automatically.
                         </p>
                     </div>
                 )}

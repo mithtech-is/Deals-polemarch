@@ -2,18 +2,39 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, X, ShoppingCart, User, ChevronDown, TrendingUp, Zap, ArrowRight, CircleHelp } from "lucide-react";
-import { useState } from "react";
-import trendingShares from "@/data/trending-shares.json";
+import { Menu, X, ShoppingCart, User, ChevronDown, CircleHelp } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { useUser } from "@/context/UserContext";
+import { getNavbarTrendingShares } from "@/lib/api/navbarTrending";
 import NotificationBell from "./NotificationBell";
+
+type NavbarTrendingShare = Awaited<ReturnType<typeof getNavbarTrendingShares>>[number];
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [isTrendingOpen, setIsTrendingOpen] = useState(false);
-    const { totalItems, items } = useCart();
+    const [trendingShares, setTrendingShares] = useState<NavbarTrendingShare[]>([]);
+    const { totalItems } = useCart();
     const { user } = useUser();
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadTrendingShares = async () => {
+            const shares = await getNavbarTrendingShares();
+
+            if (isMounted) {
+                setTrendingShares(shares);
+            }
+        };
+
+        loadTrendingShares();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     return (
         <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -43,26 +64,38 @@ const Navbar = () => {
                         <div className="absolute left-1/2 -translate-x-1/2 top-full hidden group-hover/mega:block w-[1000px] bg-white border border-slate-100 shadow-2xl rounded-[40px] p-0 animate-in fade-in slide-in-from-top-2 duration-300">
                             <div className="py-12 px-8">
                                 {/* Shares Grid - Compact */}
-                                <div className="grid grid-cols-6 gap-4">
-                                    {trendingShares.map((share, idx) => (
-                                        <Link
-                                            key={idx}
-                                            href={`/deals/${share.handle}`}
-                                            className="group/item flex flex-col items-center justify-center gap-4 p-6 rounded-[24px] bg-white border border-slate-50/50 hover:bg-slate-50 hover:shadow-lg transition-all duration-300"
-                                        >
-                                            <div className="h-14 w-14 rounded-2xl bg-white shadow-sm border border-slate-50 flex items-center justify-center overflow-hidden group-hover/item:scale-110 transition-transform duration-500">
-                                                {share.logo ? (
-                                                    <Image src={share.logo} alt={share.name} width={56} height={56} className="object-contain p-1.5" />
-                                                ) : (
-                                                    <div className="h-full w-full bg-slate-50/50" />
-                                                )}
-                                            </div>
-                                            <div className="text-sm font-bold text-slate-800 group-hover/item:text-primary transition-colors text-center lowercase">
-                                                {share.name}
-                                            </div>
-                                        </Link>
-                                    ))}
-                                </div>
+                                {trendingShares.length > 0 ? (
+                                    <div className="grid grid-cols-6 gap-4">
+                                        {trendingShares.map((share) => (
+                                            <Link
+                                                key={share.id}
+                                                href={`/deals/${share.handle || share.id}`}
+                                                className="group/item flex flex-col items-center justify-center gap-4 p-6 rounded-[24px] bg-white border border-slate-50/50 hover:bg-slate-50 hover:shadow-lg transition-all duration-300"
+                                            >
+                                                <div className="h-14 w-14 rounded-2xl bg-white shadow-sm border border-slate-50 flex items-center justify-center overflow-hidden group-hover/item:scale-110 transition-transform duration-500">
+                                                    <Image
+                                                        src={share.logo || "/assets/logos/placeholder.png"}
+                                                        alt={share.name}
+                                                        width={56}
+                                                        height={56}
+                                                        unoptimized={share.logo?.startsWith("http")}
+                                                        className="object-contain p-1.5"
+                                                    />
+                                                </div>
+                                                <div className="text-sm font-bold text-slate-800 group-hover/item:text-primary transition-colors text-center lowercase">
+                                                    {share.name}
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50/50 px-6 py-10 text-center">
+                                        <p className="text-sm font-bold text-slate-700">No navbar trending shares available right now.</p>
+                                        <p className="mt-2 text-xs text-slate-500">
+                                            Add shares to the &quot;Trending Shares&quot; collection in the dashboard to populate this menu.
+                                        </p>
+                                    </div>
+                                )}
 
                                 {/* Menu Footer - More Compact */}
                                 <div className="mt-8 pt-8 border-t border-slate-50 flex items-center justify-center gap-3">
@@ -135,28 +168,37 @@ const Navbar = () => {
                             <ChevronDown className={`h-5 w-5 transition-transform ${isTrendingOpen ? 'rotate-180' : ''}`} />
                         </button>
                         {isTrendingOpen && (
-                            <div className="grid grid-cols-1 gap-3 animate-in slide-in-from-top-1 fade-in duration-200 mt-4 pl-2">
-                                {trendingShares.slice(0, 6).map((share, idx) => (
-                                    <Link
-                                        key={idx}
-                                        href={`/deals/${share.handle}`}
-                                        className="flex items-center gap-4 p-3 rounded-[20px] bg-slate-50 border border-slate-100 transition-all active:scale-[0.98]"
-                                        onClick={() => setIsOpen(false)}
-                                    >
-                                        <div className="h-10 w-10 rounded-xl bg-white shadow-sm flex-shrink-0 flex items-center justify-center overflow-hidden">
-                                            {share.logo ? (
-                                                <Image src={share.logo} alt={share.name} width={40} height={40} className="object-contain p-1.5" />
-                                            ) : (
-                                                <div className="h-full w-full bg-slate-100" />
-                                            )}
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <div className="text-sm font-bold text-slate-900 lowercase">{share.name}</div>
-                                            <div className="text-[10px] text-slate-400 font-medium tracking-wide uppercase">{share.sector}</div>
-                                        </div>
-                                    </Link>
-                                ))}
-                            </div>
+                            trendingShares.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-3 animate-in slide-in-from-top-1 fade-in duration-200 mt-4 pl-2">
+                                    {trendingShares.map((share) => (
+                                        <Link
+                                            key={share.id}
+                                            href={`/deals/${share.handle || share.id}`}
+                                            className="flex items-center gap-4 p-3 rounded-[20px] bg-slate-50 border border-slate-100 transition-all active:scale-[0.98]"
+                                            onClick={() => setIsOpen(false)}
+                                        >
+                                            <div className="h-10 w-10 rounded-xl bg-white shadow-sm flex-shrink-0 flex items-center justify-center overflow-hidden">
+                                                <Image
+                                                    src={share.logo || "/assets/logos/placeholder.png"}
+                                                    alt={share.name}
+                                                    width={40}
+                                                    height={40}
+                                                    unoptimized={share.logo?.startsWith("http")}
+                                                    className="object-contain p-1.5"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <div className="text-sm font-bold text-slate-900 lowercase">{share.name}</div>
+                                                <div className="text-[10px] text-slate-400 font-medium tracking-wide uppercase">{share.sector}</div>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="mt-4 rounded-[20px] border border-dashed border-slate-200 bg-slate-50/60 px-4 py-5 text-sm text-slate-500">
+                                    Add shares to the &quot;Trending Shares&quot; collection to show them here.
+                                </div>
+                            )
                         )}
                     </div>
 

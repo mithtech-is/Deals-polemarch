@@ -6,7 +6,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { medusaClient, mapMedusaToDeal } from "@/lib/medusa";
 import { Deal } from "@/data/deals";
-import { ArrowLeft, TrendingUp, ShoppingCart, Info, BarChart3 } from "lucide-react";
+import { ArrowLeft, Info, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { useUser } from "@/context/UserContext";
@@ -32,9 +32,12 @@ export default function DealDetailPage() {
                 }
 
                 const { product } = await medusaClient.products.retrieve(id, regionId);
-                console.log("variant zero:", product.variants[0]);
-                console.log(product.thumbnail);
-                console.log(product.images);
+
+                if (!product) {
+                    setDeal(null);
+                    return;
+                }
+
                 setDeal(mapMedusaToDeal(product));
             } catch (error) {
                 console.error("Error fetching deal:", error);
@@ -83,12 +86,14 @@ export default function DealDetailPage() {
         );
     }
 
+    const isKycApproved = user ? user.metadata?.kyc_status === "approved" || user.metadata?.kyc_status === "verified" : false;
+
     const renderBuyBox = () => (
         <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl relative">
             <div className="flex justify-between items-start mb-6">
                 <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Price per share</p>
-                    <p className="text-3xl font-bold text-slate-900">₹{deal.price.toLocaleString()}</p>
+                    <p className="text-3xl font-bold text-slate-900">Rs. {deal.price.toLocaleString()}</p>
                 </div>
                 <span className="px-2 py-1 rounded-md bg-red-50 text-red-700 text-[9px] font-bold uppercase tracking-wider">
                     High Demand
@@ -126,21 +131,21 @@ export default function DealDetailPage() {
             <div className="space-y-3 mb-8">
                 <div className="flex justify-between">
                     <span className="text-sm text-slate-500">Investment Value</span>
-                    <span className="text-sm font-bold">₹{(deal.price * quantity).toLocaleString()}</span>
+                    <span className="text-sm font-bold">Rs. {(deal.price * quantity).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                     <span className="text-sm text-slate-500">Processing Fee (2%)</span>
-                    <span className="text-sm font-bold">₹{(deal.price * quantity * 0.02).toLocaleString()}</span>
+                    <span className="text-sm font-bold">Rs. {(deal.price * quantity * 0.02).toLocaleString()}</span>
                 </div>
 
                 <div className="flex justify-between pt-3 border-t border-slate-100">
                     <span className="text-base font-bold text-slate-900">Total Payable</span>
-                    <span className="text-lg font-bold text-slate-900">₹{(deal.price * quantity * 1.02).toLocaleString()}</span>
+                    <span className="text-lg font-bold text-slate-900">Rs. {(deal.price * quantity * 1.02).toLocaleString()}</span>
                 </div>
             </div>
 
             <button
-                disabled={deal.price <= 0 || (user && user.metadata?.kyc_status !== "approved" && user.metadata?.kyc_status !== "verified")}
+                disabled={deal.price <= 0 || (Boolean(user) && !isKycApproved)}
                 onClick={handleAddToCart}
                 className="w-full py-4 rounded-xl bg-[#083021] text-white font-bold hover:bg-[#052015] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -154,7 +159,7 @@ export default function DealDetailPage() {
                 </p>
             </div>
 
-            {user && user.metadata?.kyc_status !== "approved" && user.metadata?.kyc_status !== "verified" && (
+            {user && !isKycApproved && (
                 <div className="mt-4 p-3 rounded-lg bg-orange-50 border border-orange-100">
                     <p className="text-[10px] font-bold text-orange-800">KYC Verification Required</p>
                     <Link href="/dashboard" className="text-[10px] font-bold text-emerald-700 hover:underline mt-1 block">
@@ -177,7 +182,6 @@ export default function DealDetailPage() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 space-y-8">
-                            {/* Logo & Header */}
                             <div className="flex items-center gap-6">
                                 <div className="h-20 w-20 rounded-xl bg-slate-900 flex items-center justify-center overflow-hidden">
                                     <img
@@ -190,39 +194,35 @@ export default function DealDetailPage() {
                                 </div>
                                 <div>
                                     <h1 className="text-3xl font-bold text-slate-900">{deal.name}</h1>
-                                    <p className="text-slate-500 uppercase text-xs font-bold tracking-wider mt-1">{deal.sector || "-"} • {deal.shareType || "UNLISTED"}</p>
+                                    <p className="text-slate-500 uppercase text-xs font-bold tracking-wider mt-1">{deal.sector || "-"} / {deal.shareType || "UNLISTED"}</p>
                                 </div>
                             </div>
 
-                            {/* MOBILE ONLY: Buy Panel right under Header */}
                             <div className="block lg:hidden">
                                 {renderBuyBox()}
                             </div>
 
-                            {/* Chart Section */}
                             <div className="bg-white rounded-2xl p-8 border border-slate-100 shadow-sm relative overflow-hidden">
                                 <div className="flex justify-between items-start mb-12">
                                     <div>
                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Current Share Price</p>
                                         <div className="flex items-center gap-4">
-                                            <h2 className="text-4xl font-bold">₹{deal.price.toLocaleString()}</h2>
+                                            <h2 className="text-4xl font-bold">Rs. {deal.price.toLocaleString()}</h2>
                                             <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
                                                 ~ +0.0% (1Y)
                                             </span>
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        {['1W', '1M', '6M', '1Y'].map(tf => (
-                                            <button key={tf} className={`px-3 py-1 text-xs font-bold rounded-md ${tf === '1Y' ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:bg-slate-50'}`}>
+                                        {["1W", "1M", "6M", "1Y"].map((tf) => (
+                                            <button key={tf} className={`px-3 py-1 text-xs font-bold rounded-md ${tf === "1Y" ? "bg-slate-100 text-slate-900" : "text-slate-400 hover:bg-slate-50"}`}>
                                                 {tf}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
-                                {/* Placeholder Chart Area */}
                                 <div className="h-48 w-full relative">
-                                    {/* Mock curved svg line */}
                                     <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                                         <path d="M0,25 C20,25 30,30 50,15 C70,0 80,10 100,5" fill="none" stroke="#10b981" strokeWidth="1.5" />
                                         <path d="M0,25 C20,25 30,30 50,15 C70,0 80,10 100,5 L100,30 L0,30 Z" fill="url(#gradient)" stroke="none" />
@@ -236,14 +236,13 @@ export default function DealDetailPage() {
                                 </div>
                             </div>
 
-                            {/* Metrics Row */}
                             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                                 {[
                                     { label: "ISIN", value: deal.isin || "-" },
                                     { label: "MKT CAP", value: deal.marketCap || "-" },
                                     { label: "P/E RATIO", value: deal.peRatio || "-" },
                                     { label: "ROE", value: deal.roe ? `${deal.roe}%` : "-" },
-                                    { label: "REVENUE", value: deal.revenue || "-" }
+                                    { label: "REVENUE", value: deal.revenue || "-" },
                                 ].map((metric, idx) => (
                                     <div key={idx} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                                         <p className="text-[10px] text-slate-500 font-bold mb-1">{metric.label}</p>
@@ -252,7 +251,6 @@ export default function DealDetailPage() {
                                 ))}
                             </div>
 
-                            {/* Company Overview */}
                             <div className="pt-6">
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="h-6 w-1 bg-emerald-700 rounded-full"></div>
@@ -263,7 +261,6 @@ export default function DealDetailPage() {
                                 </div>
                             </div>
 
-                            {/* Financials */}
                             <div className="pt-6">
                                 <div className="flex items-center gap-3 mb-6">
                                     <div className="h-6 w-1 bg-emerald-700 rounded-full"></div>
@@ -276,7 +273,7 @@ export default function DealDetailPage() {
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">REVENUE (FY24)</p>
                                             <h4 className="text-2xl font-bold mb-1">{deal.revenueValue || "-"}</h4>
                                             <p className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                                                ↑ {deal.revenueGrowth || "-"} YoY
+                                                Up {deal.revenueGrowth || "-"} YoY
                                             </p>
                                         </div>
                                         <BarChart3 className="h-10 w-10 text-emerald-700 opacity-20 mt-auto" />
@@ -286,7 +283,7 @@ export default function DealDetailPage() {
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">PROFIT AFTER TAX</p>
                                             <h4 className="text-2xl font-bold mb-1">{deal.profitValue || "-"}</h4>
                                             <p className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                                                ↑ {deal.profitGrowth || "-"} YoY
+                                                Up {deal.profitGrowth || "-"} YoY
                                             </p>
                                         </div>
                                         <BarChart3 className="h-10 w-10 text-emerald-700 opacity-20 mt-auto" />
@@ -294,7 +291,6 @@ export default function DealDetailPage() {
                                 </div>
                             </div>
 
-                            {/* Company Details Grid */}
                             <div className="pt-6">
                                 <div className="flex items-center gap-3 mb-6">
                                     <div className="h-6 w-1 bg-emerald-700 rounded-full"></div>
@@ -306,9 +302,9 @@ export default function DealDetailPage() {
                                         { label: "Founded", value: deal.founded || "-" },
                                         { label: "Headquarters", value: deal.headquarters || "-" },
                                         { label: "Valuation", value: deal.valuation || "-" },
-                                        { label: "Face Value", value: deal.faceValue ? `₹${deal.faceValue}` : "-" },
+                                        { label: "Face Value", value: deal.faceValue ? `Rs. ${deal.faceValue}` : "-" },
                                         { label: "Share Type", value: deal.shareType || "-" },
-                                        { label: "Depository", value: deal.depository || "-" }
+                                        { label: "Depository", value: deal.depository || "-" },
                                     ].map((item, idx) => (
                                         <div key={idx} className="flex justify-between items-center border-b border-slate-200 pb-3 last:border-0 md:[&:nth-last-child(2)]:border-0 md:last:border-b-0">
                                             <span className="text-xs text-slate-500">{item.label}</span>
@@ -319,7 +315,6 @@ export default function DealDetailPage() {
                             </div>
                         </div>
 
-                        {/* Buy Panel (Desktop right) */}
                         <div className="hidden lg:block lg:sticky lg:top-8 h-fit lg:col-span-1">
                             {renderBuyBox()}
                         </div>

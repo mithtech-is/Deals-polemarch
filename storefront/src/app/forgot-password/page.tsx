@@ -18,11 +18,10 @@ export default function ForgotPasswordPage() {
         setError("");
 
         try {
-            // Mocking the password reset request as Medusa requires email provider setup
-            // In a real scenario, we would call medusaClient.auth.requestPasswordReset({ email })
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            setSuccess(true);
-        } catch (err: any) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            setSuccess(false);
+            setError("Password reset email is not configured yet. Please contact support for help signing in.");
+        } catch {
             setError("Something went wrong. Please try again later.");
         } finally {
             setIsSubmitting(false);
@@ -47,7 +46,7 @@ export default function ForgotPasswordPage() {
 
                         <div className="relative z-10">
                             <h1 className="text-3xl font-bold mb-2">Forgot Password?</h1>
-                            <p className="text-slate-500 mb-8">Enter your email and we'll send you a link to reset your password.</p>
+                            <p className="text-slate-500 mb-8">Enter your email and we&apos;ll guide you with the next step.</p>
 
                             {success ? (
                                 <div className="text-center py-4">
@@ -55,12 +54,12 @@ export default function ForgotPasswordPage() {
                                         <CheckCircle2 className="h-10 w-10" />
                                     </div>
                                     <h3 className="text-xl font-bold mb-2">Check your email</h3>
-                                    <p className="text-slate-500 mb-8">We've sent a password reset link to <span className="text-slate-900 font-bold">{email}</span></p>
+                                    <p className="text-slate-500 mb-8">We&apos;ve sent a password reset link to <span className="text-slate-900 font-bold">{email}</span></p>
                                     <button
                                         onClick={() => setSuccess(false)}
                                         className="text-primary font-bold hover:underline"
                                     >
-                                        Didn't receive the email? Try again
+                                        Didn&apos;t receive the email? Try again
                                     </button>
                                 </div>
                             ) : (
@@ -95,7 +94,7 @@ export default function ForgotPasswordPage() {
                                         {isSubmitting ? (
                                             <>
                                                 <Loader2 className="h-6 w-6 animate-spin" />
-                                                Sending Link...
+                                                Checking...
                                             </>
                                         ) : (
                                             "Reset Password"

@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Filter, ChevronDown, Check } from "lucide-react";
+import { Search, ChevronDown, Check } from "lucide-react";
 import { useState } from "react";
 
 interface DealFiltersProps {
@@ -8,8 +8,10 @@ interface DealFiltersProps {
     setSearch: (val: string) => void;
     sector: string;
     setSector: (val: string) => void;
+    sectorOptions: string[];
     marketCap: string;
     setMarketCap: (val: string) => void;
+    marketCapOptions: string[];
     sortBy: string;
     setSortBy: (val: string) => void;
     totalDeals: number;
@@ -20,8 +22,10 @@ const DealFilters = ({
     setSearch,
     sector,
     setSector,
+    sectorOptions,
     marketCap,
     setMarketCap,
+    marketCapOptions,
     sortBy,
     setSortBy,
     totalDeals
@@ -46,14 +50,14 @@ const DealFilters = ({
                     <FilterDropdown
                         label="Sector"
                         value={sector}
-                        options={["All Sectors", "Finance", "FinTech", "Retail", "Manufacturing", "Tech", "Healthcare", "Hospitality"]}
+                        options={sectorOptions}
                         onChange={setSector}
                     />
 
                     <FilterDropdown
                         label="Market Cap"
                         value={marketCap}
-                        options={["All Market Caps", "Small Cap", "Mid Cap", "Large Cap", "Unspecified"]}
+                        options={marketCapOptions}
                         onChange={setMarketCap}
                     />
                 </div>

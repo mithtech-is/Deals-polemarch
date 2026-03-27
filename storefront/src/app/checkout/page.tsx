@@ -2,7 +2,7 @@
 
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { CheckCircle2, ArrowLeft, Briefcase, CreditCard, ShieldCheck, Loader2, Landmark, ArrowRight } from "lucide-react";
+import { CheckCircle2, ArrowLeft, Briefcase, ShieldCheck, Loader2, Landmark, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { useUser } from "@/context/UserContext";
@@ -10,17 +10,38 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { medusaClient } from "@/lib/medusa";
 
+interface CheckoutUser {
+    email: string;
+    first_name?: string | null;
+    last_name?: string | null;
+}
+
+interface CheckoutOrderItem {
+    title?: string | null;
+    quantity?: number | null;
+}
+
+interface CheckoutOrder {
+    id: string;
+    display_id?: string | number | null;
+    items?: CheckoutOrderItem[];
+    total?: number | null;
+}
+
+interface ErrorWithMessage {
+    message?: string;
+}
+
 export default function CheckoutPage() {
     const { items, totalAmount, cartId, clearCart } = useCart();
     const { user, isLoading: userLoading } = useUser();
     const router = useRouter();
-    
+
     const [isProcessing, setIsProcessing] = useState(false);
     const [step, setStep] = useState<"payment" | "success">("payment");
-    const [order, setOrder] = useState<any>(null);
+    const [order, setOrder] = useState<CheckoutOrder | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    // Initial state setup
     useEffect(() => {
         if (!userLoading && !user) {
             router.push("/login?redirect=/checkout");
@@ -34,49 +55,30 @@ export default function CheckoutPage() {
         setError(null);
 
         try {
-            // 1. Update cart with email (required for completion)
-            console.log("[Checkout] Updating cart email for cartId:", cartId);
             await medusaClient.carts.update(cartId, { email: user.email });
 
-            // 2. Automated Shipping Selection
-            console.log("[Checkout] Checking shipping options...");
             const { shipping_options } = await medusaClient.carts.listShippingOptions(cartId);
-            
+
             if (shipping_options && shipping_options.length > 0) {
-                console.log("[Checkout] Automatically attaching shipping method:", shipping_options[0].id);
                 await medusaClient.carts.addShippingMethod(cartId, shipping_options[0].id);
-            } else {
-                console.warn("[Checkout] No shipping options available for this cart.");
             }
 
-            // 3. Create Payment Collection (V2 Flow)
-            console.log("[Checkout] Creating payment collection...");
             const { payment_collection: paymentCollection } = await medusaClient.carts.createPaymentCollection(cartId);
-            console.log("[Checkout] Payment collection created:", paymentCollection.id);
+            await medusaClient.carts.initializePaymentSession(paymentCollection.id, "pp_system_default");
 
-            // 4. Initialize payment session for the collection
-            console.log("4. Initializing payment session for collection:", paymentCollection.id);
-            const session = await medusaClient.carts.initializePaymentSession(paymentCollection.id, "pp_system_default");
-
-            // 5. Complete cart
-            console.log("[Checkout] Completing cart...");
             const result = await medusaClient.carts.complete(cartId);
-            
+
             if (result.type === "order") {
                 const orderData = result.order || result.data;
-                console.log("[Checkout] Order completed successfully:", orderData.id);
                 setOrder(orderData);
                 setStep("success");
                 clearCart();
             } else {
-                console.warn("[Checkout] Completion returned non-order type:", result.type);
                 throw new Error(result.message || "Failed to complete order. Please try again.");
             }
-        } catch (err: any) {
-            console.error("Checkout error details:", err);
-            // If the error has a message (likely from medusaClient throwing), use it.
-            // Otherwise fallback to a slightly better generic message.
-            setError(err.message || "An unexpected error occurred during checkout. Please try again.");
+        } catch (err: unknown) {
+            const errorMessage = (err as ErrorWithMessage)?.message;
+            setError(errorMessage || "An unexpected error occurred during checkout. Please try again.");
         } finally {
             setIsProcessing(false);
         }
@@ -93,19 +95,20 @@ export default function CheckoutPage() {
 
     if (step === "success" && order) {
         const firstItem = order.items?.[0] || {};
-        const customerName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email;
-        
+        const customer = user as CheckoutUser;
+        const customerName = `${customer.first_name || ""} ${customer.last_name || ""}`.trim() || customer.email;
+
         const message = encodeURIComponent(`Hello Polemarch Team,
 
 I have placed an order on Polemarch.
 
 Order ID: ${order.display_id || order.id}
 Name: ${customerName}
-Email: ${user.email}
+Email: ${customer.email}
 
 Company: ${firstItem.title || "Unlisted Shares"}
 Quantity: ${firstItem.quantity || 0}
-Investment Amount: ₹${order.total?.toLocaleString('en-IN')}
+Investment Amount: Rs. ${order.total?.toLocaleString("en-IN")}
 
 Please guide me on the next steps to complete this transaction.`);
 
@@ -142,13 +145,13 @@ Please guide me on the next steps to complete this transaction.`);
                                 </div>
                                 <div className="flex justify-between items-center py-3">
                                     <span className="text-slate-500 font-medium">Total Investment</span>
-                                    <span className="text-xl font-bold text-primary">₹{order.total?.toLocaleString('en-IN')}</span>
+                                    <span className="text-xl font-bold text-primary">Rs. {order.total?.toLocaleString("en-IN")}</span>
                                 </div>
                             </div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <a 
+                            <a
                                 href={whatsappUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -186,11 +189,10 @@ Please guide me on the next steps to complete this transaction.`);
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-                        {/* Left: Payment Instructions */}
                         <div className="lg:col-span-8 space-y-8">
                             <div className="bg-slate-900 text-white rounded-[40px] p-10 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 h-40 w-40 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-                                
+
                                 <div className="relative z-10">
                                     <div className="flex items-center gap-3 mb-8">
                                         <Landmark className="h-8 w-8 text-primary" />
@@ -199,7 +201,7 @@ Please guide me on the next steps to complete this transaction.`);
 
                                     <div className="p-8 rounded-3xl bg-white/5 border border-white/10 mb-10">
                                         <p className="text-slate-400 text-sm mb-6 font-medium">Please transfer the total amount to the bank account listed below:</p>
-                                        
+
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             <div>
                                                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Account Name</p>
@@ -223,10 +225,10 @@ Please guide me on the next steps to complete this transaction.`);
                                     <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-10 border-t border-white/10">
                                         <div>
                                             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Transfer Exactly</p>
-                                            <p className="text-4xl font-bold text-white">₹{totalPayable.toLocaleString()}</p>
+                                            <p className="text-4xl font-bold text-white">Rs. {totalPayable.toLocaleString()}</p>
                                         </div>
-                                        
-                                        <button 
+
+                                        <button
                                             onClick={handleConfirmPayment}
                                             disabled={isProcessing}
                                             className="w-full sm:w-auto px-12 py-5 rounded-full bg-primary text-white font-bold text-lg hover:bg-primary/90 hover:scale-105 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:scale-100"
@@ -259,14 +261,13 @@ Please guide me on the next steps to complete this transaction.`);
                             </div>
                         </div>
 
-                        {/* Right: Order Summary */}
                         <div className="lg:col-span-4">
                             <div className="bg-white rounded-[40px] border border-slate-100 p-8 shadow-sm h-fit sticky top-24">
                                 <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
                                     <Briefcase className="h-5 w-5 text-primary" />
                                     Investment Summary
                                 </h3>
-                                
+
                                 <div className="space-y-4 mb-8">
                                     {items.map((item) => (
                                         <div key={item.id} className="flex justify-between items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
@@ -274,7 +275,7 @@ Please guide me on the next steps to complete this transaction.`);
                                                 <p className="font-bold text-sm text-slate-900 leading-tight mb-1">{item.name}</p>
                                                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{item.quantity} Shares</p>
                                             </div>
-                                            <p className="font-bold text-slate-900 text-sm">₹{(item.price * item.quantity).toLocaleString()}</p>
+                                            <p className="font-bold text-slate-900 text-sm">Rs. {(item.price * item.quantity).toLocaleString()}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -282,15 +283,15 @@ Please guide me on the next steps to complete this transaction.`);
                                 <div className="pt-6 border-t border-slate-100 space-y-4">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-500">Subtotal</span>
-                                        <span className="font-bold">₹{totalAmount.toLocaleString()}</span>
+                                        <span className="font-bold">Rs. {totalAmount.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-500">Stamp Duty (Approx.)</span>
-                                        <span className="font-bold">₹{Math.ceil(totalAmount * 0.00015).toLocaleString()}</span>
+                                        <span className="font-bold">Rs. {Math.ceil(totalAmount * 0.00015).toLocaleString()}</span>
                                     </div>
                                     <div className="pt-6 border-t border-slate-200 flex justify-between items-end">
                                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Payable</span>
-                                        <span className="text-2xl font-bold text-primary">₹{totalPayable.toLocaleString()}</span>
+                                        <span className="text-2xl font-bold text-primary">Rs. {totalPayable.toLocaleString()}</span>
                                     </div>
                                 </div>
                             </div>

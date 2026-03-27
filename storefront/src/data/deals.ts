@@ -4,6 +4,7 @@ export interface Deal {
     id: string;
     handle?: string;
     name: string;
+    createdAt?: string;
     logo: string;
     sector: string;
     marketCap: string;
