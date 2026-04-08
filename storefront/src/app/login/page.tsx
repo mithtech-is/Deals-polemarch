@@ -29,7 +29,7 @@ function LoginPageContent() {
 
         try {
             await login(formData);
-            const redirectTo = searchParams.get("redirect") || "/";
+            const redirectTo = searchParams.get("redirect") || "/dashboard";
             router.push(redirectTo);
         } catch (err: any) {
             setError(err.message || "Invalid email or password.");

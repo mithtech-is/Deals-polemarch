@@ -1,0 +1,52 @@
+{
+  "namespaces": [],
+  "tables": [
+    {
+      "columns": {
+        "id": { "name": "id", "type": "text", "unsigned": false, "autoincrement": false, "primary": true, "nullable": false, "mappedType": "text" },
+        "isin": { "name": "isin", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "company_id": { "name": "company_id", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "company_name": { "name": "company_name", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "cin": { "name": "cin", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "sector": { "name": "sector", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "industry": { "name": "industry", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "description": { "name": "description", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "listing_status": { "name": "listing_status", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "overview_data": { "name": "overview_data", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "ratios_data": { "name": "ratios_data", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "trends_data": { "name": "trends_data", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "synced_at": { "name": "synced_at", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "market_cap": { "name": "market_cap", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "share_type": { "name": "share_type", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "lot_size": { "name": "lot_size", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "face_value": { "name": "face_value", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "depository": { "name": "depository", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "pan_number": { "name": "pan_number", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "rta": { "name": "rta", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "total_shares": { "name": "total_shares", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "fifty_two_week_high": { "name": "fifty_two_week_high", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "fifty_two_week_low": { "name": "fifty_two_week_low", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "founded": { "name": "founded", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "headquarters": { "name": "headquarters", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "valuation": { "name": "valuation", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "pe_ratio": { "name": "pe_ratio", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "pb_ratio": { "name": "pb_ratio", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "roe_value": { "name": "roe_value", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "debt_to_equity": { "name": "debt_to_equity", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "book_value": { "name": "book_value", "type": "text", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "default": "''", "mappedType": "text" },
+        "created_at": { "name": "created_at", "type": "timestamptz", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "length": 6, "default": "now()", "mappedType": "datetime" },
+        "updated_at": { "name": "updated_at", "type": "timestamptz", "unsigned": false, "autoincrement": false, "primary": false, "nullable": false, "length": 6, "default": "now()", "mappedType": "datetime" },
+        "deleted_at": { "name": "deleted_at", "type": "timestamptz", "unsigned": false, "autoincrement": false, "primary": false, "nullable": true, "length": 6, "mappedType": "datetime" }
+      },
+      "name": "company_record",
+      "schema": "public",
+      "indexes": [
+        { "keyName": "company_record_pkey", "columnNames": ["id"], "composite": false, "primary": true, "unique": true }
+      ],
+      "checks": [],
+      "foreignKeys": {},
+      "nativeEnums": {}
+    }
+  ],
+  "name": "public"
+}

@@ -23,14 +23,14 @@ export const ManualInvestmentSchema = z.object({
 });
 
 export const KycMetadataSchema = z.object({
-    kyc_status: z.enum(["pending", "submitted", "approved", "verified", "rejected"]).optional(),
-    kyc_pan_number: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format").optional(),
-    kyc_aadhaar_number: z.string().regex(/^[0-9]{12}$/, "Aadhaar must be 12 digits").optional(),
-    kyc_full_name: z.string().optional(),
-    kyc_dp_name: z.string().optional(),
-    kyc_demat_number: z.string().regex(/^[0-9]{16}$/, "Demat number must be 16 digits").optional(),
-    kyc_pan_file_url: fileUrlSchema.optional(),
-    kyc_cmr_file_url: fileUrlSchema.optional(),
+    kyc_status: z.enum(["pending", "submitted", "approved", "verified", "rejected"]).optional().nullable(),
+    kyc_pan_number: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format").optional().nullable().or(z.literal("")),
+    kyc_aadhaar_number: z.string().regex(/^[0-9]{12}$/, "Aadhaar must be 12 digits").optional().nullable().or(z.literal("")),
+    kyc_full_name: z.string().optional().nullable(),
+    kyc_dp_name: z.string().optional().nullable(),
+    kyc_demat_number: z.string().regex(/^(IN\d{14}|\d{16})$/, "Demat: NSDL IN + 14 digits or CDSL 16 digits").optional().nullable().or(z.literal("")),
+    kyc_pan_file_url: fileUrlSchema.optional().nullable().or(z.literal("")),
+    kyc_cmr_file_url: fileUrlSchema.optional().nullable().or(z.literal("")),
     kyc_submitted_at: z.string().datetime().optional().nullable(),
     kyc_reviewed_at: z.string().datetime().optional().nullable(),
     kyc_approved_at: z.string().datetime().optional().nullable(),

@@ -27,6 +27,7 @@ export default function KYCPage() {
         cmrFileUrl: "",
     });
     const [uploadingFile, setUploadingFile] = useState<string | null>(null);
+    const [isCancelling, setIsCancelling] = useState(false);
 
     useEffect(() => {
         const fetchKycStatus = async () => {
@@ -105,7 +106,7 @@ export default function KYCPage() {
         formData.fullName.trim().length > 0 &&
         /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber) &&
         formData.dpName.trim().length > 0 &&
-        /^[0-9]{16}$/.test(formData.dematNumber) &&
+        /^(IN\d{14}|\d{16})$/.test(formData.dematNumber) &&
         /^[0-9]{12}$/.test(normalizedAadhaar) &&
         !!formData.panFileUrl &&
         !!formData.cmrFileUrl &&
@@ -130,9 +131,9 @@ export default function KYCPage() {
             return false;
         }
 
-        const dematRegex = /^[0-9]{16}$/;
+        const dematRegex = /^(IN\d{14}|\d{16})$/;
         if (!dematRegex.test(formData.dematNumber)) {
-            setError("Invalid Demat Number. Must be exactly 16 digits (8-digit DP ID + 8-digit Client ID).");
+            setError("Invalid Demat Number. NSDL: IN + 14 digits (e.g. IN12345678901234). CDSL: 16 digits (e.g. 1208160012345678).");
             return false;
         }
 
@@ -149,9 +150,26 @@ export default function KYCPage() {
         return true;
     };
 
+    const deleteUploadedFile = async (url: string | null | undefined) => {
+        if (!url) return;
+        try {
+            const backend = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'http://localhost:9000';
+            await fetch(`${backend}/store/upload?url=${encodeURIComponent(url)}`, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${localStorage.getItem("medusa_auth_token")}`,
+                    "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || ""
+                },
+            });
+        } catch (err) {
+            // Best-effort: don't block on delete failure
+            console.warn("Failed to delete previous file:", err);
+        }
+    };
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, internalFileType: 'pan' | 'cmr') => {
         const file = e.target.files?.[0];
-        
+
         // Defensive checks
         if (!file) {
             setError("Please select a file to upload.");
@@ -161,9 +179,15 @@ export default function KYCPage() {
         setUploadingFile(internalFileType);
         setError("");
 
+        // Delete any previously uploaded file in this slot before uploading the new one
+        const previousUrl = internalFileType === 'pan' ? formData.panFileUrl : formData.cmrFileUrl;
+        if (previousUrl) {
+            await deleteUploadedFile(previousUrl);
+        }
+
         try {
             const uploadData = new FormData();
-            
+
             // Backend now only requires key "file"
             uploadData.append("file", file);
 
@@ -252,6 +276,79 @@ export default function KYCPage() {
         }
     };
 
+    const handleCancelKyc = async () => {
+        if (!user) return;
+        const confirmed = typeof window !== "undefined"
+            ? window.confirm("This will delete your uploaded documents and reset your KYC. You'll need to fill the form again. Continue?")
+            : false;
+        if (!confirmed) return;
+
+        setIsCancelling(true);
+        setError("");
+
+        // Pull current file URLs from user metadata (form state may be empty after refresh)
+        const meta = (user.metadata || {}) as Record<string, any>;
+        const panUrl = meta.kyc_pan_file_url as string | undefined;
+        const cmrUrl = meta.kyc_cmr_file_url as string | undefined;
+
+        try {
+            // Delete uploaded files in parallel (best-effort)
+            await Promise.all([deleteUploadedFile(panUrl), deleteUploadedFile(cmrUrl)]);
+
+            // Clear KYC metadata on the customer
+            const response = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'http://localhost:9000'}/store/customers/me`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${localStorage.getItem("medusa_auth_token")}`,
+                    "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || ""
+                },
+                body: JSON.stringify({
+                    metadata: {
+                        ...meta,
+                        kyc_status: null,
+                        kyc_pan_number: null,
+                        kyc_aadhaar_number: null,
+                        kyc_full_name: null,
+                        kyc_dp_name: null,
+                        kyc_demat_number: null,
+                        kyc_pan_file_url: null,
+                        kyc_cmr_file_url: null,
+                        kyc_submitted_at: null,
+                        kyc_reviewed_at: null,
+                        kyc_approved_at: null,
+                        kyc_rejected_at: null,
+                        kyc_review_notes: null,
+                        kyc_rejection_reason: null,
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || data.error || "Failed to cancel KYC");
+            }
+
+            // Reset local state and refresh user
+            setFormData({
+                panNumber: "",
+                aadhaarNumber: "",
+                fullName: "",
+                dpName: "",
+                dematNumber: "",
+                panFileUrl: "",
+                cmrFileUrl: "",
+            });
+            setSuccess(false);
+            setKycData(null);
+            await checkSession();
+        } catch (err: any) {
+            setError(err.message || "Failed to cancel KYC. Please try again.");
+        } finally {
+            setIsCancelling(false);
+        }
+    };
+
     if (currentKycStatus === "approved" || currentKycStatus === "verified") {
         return (
             <div className="flex flex-col min-h-screen bg-slate-50/50">
@@ -284,19 +381,34 @@ export default function KYCPage() {
                 <Navbar />
                 <main className="flex-grow py-20 px-4">
                     <div className="container mx-auto max-w-2xl text-center">
-                        <div className="h-24 w-24 rounded-[32px] bg-green-50 text-green-600 flex items-center justify-center mx-auto mb-8 shadow-sm">
-                            <CheckCircle2 className="h-12 w-12" />
+                        <div className="h-24 w-24 rounded-[32px] bg-orange-50 text-orange-600 flex items-center justify-center mx-auto mb-8 shadow-sm">
+                            <Loader2 className="h-12 w-12 animate-spin" />
                         </div>
-                        <h1 className="text-4xl font-bold mb-4">KYC Submitted Successfully!</h1>
-                        <p className="text-xl text-slate-500 mb-12">
-                            Our compliance team is currently reviewing your documents. Your KYC is under review and will be updated in 24-72 working hours.
+                        <h1 className="text-4xl font-bold mb-4">Pending Verification</h1>
+                        <p className="text-xl text-slate-500 mb-4">
+                            Your KYC documents have been submitted and are awaiting review.
                         </p>
-                        <button
-                            onClick={() => router.push("/dashboard")}
-                            className="px-8 py-4 rounded-2xl bg-primary text-white font-bold hover:shadow-lg transition-all"
-                        >
-                            Back to Dashboard
-                        </button>
+                        <p className="text-base text-slate-400 mb-12">
+                            Our compliance team typically reviews submissions within 24–72 working hours.
+                        </p>
+                        {error && (
+                            <p className="text-sm text-red-600 mb-4">{error}</p>
+                        )}
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                            <button
+                                onClick={() => router.push("/dashboard")}
+                                className="px-8 py-4 rounded-2xl bg-primary text-white font-bold hover:shadow-lg transition-all"
+                            >
+                                Back to Dashboard
+                            </button>
+                            <button
+                                onClick={handleCancelKyc}
+                                disabled={isCancelling}
+                                className="px-8 py-4 rounded-2xl border-2 border-red-200 text-red-600 font-bold hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isCancelling ? "Cancelling..." : "Cancel & Re-submit"}
+                            </button>
+                        </div>
                     </div>
                 </main>
                 <Footer />
@@ -396,20 +508,33 @@ export default function KYCPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-600 ml-1">Demat Account Number (16 Digits)</label>
+                                        <label className="text-sm font-bold text-slate-600 ml-1">Demat Account Number (BO ID)</label>
                                         <input
                                             required
                                             type="text"
                                             maxLength={16}
-                                            placeholder="12081600..."
+                                            placeholder="IN30021412345678 or 1208160012345678"
                                             className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
                                             value={formData.dematNumber}
                                             onChange={(e) => {
-                                                const val = e.target.value.replace(/[^0-9]/g, "");
+                                                // Allowed: "IN" + up to 14 digits, OR up to 16 digits
+                                                const raw = e.target.value.toUpperCase();
+                                                let val = "";
+                                                if (raw.startsWith("I")) {
+                                                    // NSDL path: keep "IN" prefix, then digits only
+                                                    if (raw.startsWith("IN")) {
+                                                        val = "IN" + raw.slice(2).replace(/\D/g, "").slice(0, 14);
+                                                    } else {
+                                                        val = "I"; // user typed only "I" so far
+                                                    }
+                                                } else {
+                                                    // CDSL path: digits only
+                                                    val = raw.replace(/\D/g, "").slice(0, 16);
+                                                }
                                                 setFormData({ ...formData, dematNumber: val });
                                             }}
                                         />
-                                        <p className="text-[10px] text-slate-400 ml-1">8 Digit DP ID + 8 Digit Client ID</p>
+                                        <p className="text-[10px] text-slate-400 ml-1">NSDL: IN + 14 digits | CDSL: 16 digits</p>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-600 ml-1">Aadhaar Number (12 Digits)</label>

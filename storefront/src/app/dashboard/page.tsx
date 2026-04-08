@@ -62,11 +62,17 @@ export default function DashboardPage() {
     const totalMedusaOrdersValue = fulfilledOrders.reduce((sum: number, order: any) => sum + (order.total || 0), 0);
     const totalPortfolioValue = totalManualValue + totalMedusaOrdersValue;
 
-    const kycStatus = user.metadata?.kyc_status || "pending";
+    // "not_started" if there's no submission timestamp on record. "pending"/"submitted"
+    // both mean awaiting admin review.
+    const rawKycStatus = user.metadata?.kyc_status as string | null | undefined;
+    const hasSubmission = !!user.metadata?.kyc_submitted_at || !!user.metadata?.kyc_pan_file_url;
+    const kycStatus =
+        rawKycStatus && rawKycStatus !== "" ? rawKycStatus :
+        hasSubmission ? "submitted" : "not_started";
     const isKycApproved = kycStatus === "approved" || kycStatus === "verified";
     const isKycRejected = kycStatus === "rejected";
     const kycConfig = {
-        pending: {
+        not_started: {
             color: "text-orange-600",
             bgColor: "bg-orange-50",
             borderColor: "border-orange-100",
@@ -76,12 +82,22 @@ export default function DashboardPage() {
             btnText: "Start KYC Process",
             pulse: true
         },
+        pending: {
+            color: "text-blue-600",
+            bgColor: "bg-blue-50",
+            borderColor: "border-blue-100",
+            icon: Clock,
+            title: "Pending Verification",
+            desc: "Your KYC is under review and will be updated in 24-72 working hours.",
+            btnText: "Check Progress",
+            pulse: true
+        },
         submitted: {
             color: "text-blue-600",
             bgColor: "bg-blue-50",
             borderColor: "border-blue-100",
             icon: Clock,
-            title: "Under Review",
+            title: "Pending Verification",
             desc: "Your KYC is under review and will be updated in 24-72 working hours.",
             btnText: "Check Progress",
             pulse: true
@@ -116,7 +132,7 @@ export default function DashboardPage() {
             btnText: "Resubmit KYC",
             pulse: false
         }
-    }[kycStatus as "pending" | "submitted" | "approved" | "verified" | "rejected"] || {
+    }[kycStatus as "not_started" | "pending" | "submitted" | "approved" | "verified" | "rejected"] || {
         color: "text-orange-600",
         bgColor: "bg-orange-50",
         borderColor: "border-orange-100",

@@ -33,7 +33,7 @@ interface ErrorWithMessage {
 }
 
 export default function CheckoutPage() {
-    const { items, totalAmount, cartId, clearCart } = useCart();
+    const { items, totalAmount, totalProcessingFee, totalLowQtyFee, totalPayable, cartId, clearCart } = useCart();
     const { user, isLoading: userLoading } = useUser();
     const router = useRouter();
 
@@ -174,8 +174,6 @@ Please guide me on the next steps to complete this transaction.`);
         );
     }
 
-    const totalPayable = Math.ceil(totalAmount * 1.00015);
-
     return (
         <div className="flex flex-col min-h-screen bg-white">
             <Navbar />
@@ -283,15 +281,24 @@ Please guide me on the next steps to complete this transaction.`);
                                 <div className="pt-6 border-t border-slate-100 space-y-4">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-500">Subtotal</span>
-                                        <span className="font-bold">Rs. {totalAmount.toLocaleString()}</span>
+                                        <span className="font-bold">Rs. {totalAmount.toLocaleString("en-IN")}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-slate-500">Stamp Duty (Approx.)</span>
-                                        <span className="font-bold">Rs. {Math.ceil(totalAmount * 0.00015).toLocaleString()}</span>
+                                        <span className="text-slate-500">Processing Fee (2%)</span>
+                                        <span className="font-bold">Rs. {totalProcessingFee.toLocaleString("en-IN")}</span>
                                     </div>
+                                    {totalLowQtyFee > 0 && (
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-amber-700">
+                                                Low Quantity Fee
+                                                <span className="block text-[10px] text-amber-600 font-normal">Per ISIN below Rs. 10,000</span>
+                                            </span>
+                                            <span className="font-bold text-amber-700">Rs. {totalLowQtyFee.toLocaleString("en-IN")}</span>
+                                        </div>
+                                    )}
                                     <div className="pt-6 border-t border-slate-200 flex justify-between items-end">
                                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Payable</span>
-                                        <span className="text-2xl font-bold text-primary">Rs. {totalPayable.toLocaleString()}</span>
+                                        <span className="text-2xl font-bold text-primary">Rs. {totalPayable.toLocaleString("en-IN")}</span>
                                     </div>
                                 </div>
                             </div>

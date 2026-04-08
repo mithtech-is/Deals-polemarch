@@ -10,7 +10,6 @@ import { validateBody } from "../utils/validate-body"
 import { CustomerUpdateSchema } from "../validators/kyc-validator"
 import { maskCustomerResponse } from "../utils/mask-middleware"
 import { logger } from "../utils/logger"
-import InventoryValidationService from "../services/inventory-validation-service"
 
 const upload = multer({ storage: multer.memoryStorage() })
 
@@ -77,6 +76,18 @@ export default defineMiddlewares({
             ],
         },
         {
+            matcher: "/store/upload",
+            method: "DELETE",
+            middlewares: [
+                authenticate("customer", ["session", "bearer"]),
+                uploadLimiter,
+                (req, res, next) => {
+                    logger.info(`Received DELETE request to ${req.url}`, { ip: req.ip });
+                    next();
+                },
+            ],
+        },
+        {
             matcher: "/static/*",
             method: "GET",
             middlewares: [
@@ -93,19 +104,66 @@ export default defineMiddlewares({
             ]
         },
         {
+            matcher: "/admin/products",
+            method: ["POST"],
+            additionalDataValidator: {
+                // ISIN is optional at create time because Medusa v2 admin has
+                // no product.create injection zone — the stock Create Product
+                // form cannot send additional_data.isin. It is set post-create
+                // via the calcula-fields widget on product.details.after
+                // (which PATCHes metadata.isin on /admin/products/:id).
+                isin: z.string().optional(),
+                company_name: z.string().optional(),
+            },
+        },
+        {
+            matcher: "/admin/products/import-shares",
+            method: "POST",
+            bodyParser: false,
+            middlewares: [
+                authenticate("user", ["session", "bearer"]),
+                multer({
+                    storage: multer.memoryStorage(),
+                    limits: { fileSize: 10 * 1024 * 1024 },
+                    fileFilter: (req, file, cb) => {
+                        const allowed = ["text/csv", "application/vnd.ms-excel", "application/octet-stream"];
+                        if (allowed.includes(file.mimetype) || (file.originalname || "").toLowerCase().endsWith(".csv")) {
+                            cb(null, true);
+                        } else {
+                            cb(new Error("Invalid file type. CSV only."));
+                        }
+                    },
+                }).single("file"),
+            ],
+        },
+        {
+            matcher: "/admin/calcula/prices/bulk",
+            method: "POST",
+            bodyParser: false,
+            middlewares: [
+                authenticate("user", ["session", "bearer"]),
+                multer({
+                    storage: multer.memoryStorage(),
+                    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+                    fileFilter: (req, file, cb) => {
+                        const allowed = ["text/csv", "application/vnd.ms-excel", "application/octet-stream"];
+                        if (allowed.includes(file.mimetype) || (file.originalname || "").toLowerCase().endsWith(".csv")) {
+                            cb(null, true);
+                        } else {
+                            cb(new Error("Invalid file type. CSV only."));
+                        }
+                    },
+                }).single("file"),
+            ],
+        },
+        {
+            matcher: "/admin/calcula*",
+            middlewares: [
+                authenticate("user", ["session", "bearer"]),
+            ],
+        },
+        {
             matcher: "/admin/customer-kyc*",
-            middlewares: [
-                authenticate("user", ["session", "bearer"]),
-            ],
-        },
-        {
-            matcher: "/admin/product-seo*",
-            middlewares: [
-                authenticate("user", ["session", "bearer"]),
-            ],
-        },
-        {
-            matcher: "/admin/category-seo*",
             middlewares: [
                 authenticate("user", ["session", "bearer"]),
             ],
@@ -159,31 +217,6 @@ export default defineMiddlewares({
             middlewares: [
                 authLimiter,
             ],
-        },
-        {
-            matcher: "/store/debug",
-            method: "GET",
-            middlewares: [
-                (req, res) => {
-                    try {
-                        const results = {
-                            kyc: false,
-                            file_service: false,
-                            notifications: false,
-                            index: false
-                        };
-                        try { results.kyc = !!req.scope.resolve("kyc"); } catch (e) {}
-                        try { results.file_service = !!req.scope.resolve("file_service"); } catch (e) {}
-                        try { results.notifications = !!req.scope.resolve("notifications"); } catch (e) {}
-                        try { results.index = !!req.scope.resolve("index"); } catch (e) {}
-                        
-                        const keys = Object.keys(req.scope.registrations);
-                        res.json({ results, keys });
-                    } catch (error: any) {
-                        res.json({ error: error.message });
-                    }
-                }
-            ]
         },
         {
             matcher: "/store/carts/:id/complete",

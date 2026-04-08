@@ -1,5 +1,3 @@
-import FinancialsTable from "@/components/product/FinancialsTable";
-
 export interface Deal {
     id: string;
     handle?: string;
@@ -24,9 +22,12 @@ export interface Deal {
     metadata?: Record<string, any>;
     variants?: any[];
 
-    peRatio?: number;
-    roe?: number;
+    peRatio?: string;
+    pbRatio?: string;
+    roe?: string;
     revenue?: string;
+    debtToEquity?: string;
+    bookValue?: string;
 
     founded?: string;
     headquarters?: string;
@@ -34,6 +35,13 @@ export interface Deal {
     faceValue?: string;
     shareType?: string;
     depository?: string;
+    industry?: string;
+    cin?: string;
+    panNumber?: string;
+    rta?: string;
+    totalShares?: string;
+    fiftyTwoWeekHigh?: number;
+    fiftyTwoWeekLow?: number;
 
     lotSize?: number;
     availability?: number;

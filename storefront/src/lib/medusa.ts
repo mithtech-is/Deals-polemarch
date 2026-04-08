@@ -77,6 +77,7 @@ export const medusaClient = {
         list: async (regionId?: string) => {
             const query = new URLSearchParams();
             if (regionId) query.append("region_id", regionId);
+            query.append("fields", "+metadata");
 
             const response = await fetch(`${MEDUSA_BACKEND_URL}/store/products?${query.toString()}`, {
                 headers: medusaHeaders,
@@ -89,6 +90,7 @@ export const medusaClient = {
         retrieve: async (id: string, regionId?: string) => {
             const query = new URLSearchParams();
             if (regionId) query.append("region_id", regionId);
+            query.append("fields", "+metadata");
 
             // Fetch from standard products endpoint to receive calculated pricing
             const isHandle = !id.startsWith("prod_");
@@ -399,19 +401,29 @@ export const mapMedusaToDeal = (medusaProduct: any) => {
         metadata: medusaProduct.metadata || {},
         variants: medusaProduct.variants || [],
         peRatio: medusaProduct.metadata?.pe_ratio,
+        pbRatio: medusaProduct.metadata?.pb_ratio,
         roe: medusaProduct.metadata?.roe,
         revenue: medusaProduct.metadata?.revenue,
+        debtToEquity: medusaProduct.metadata?.debt_to_equity,
+        bookValue: medusaProduct.metadata?.book_value,
         founded: medusaProduct.metadata?.founded,
         headquarters: medusaProduct.metadata?.headquarters,
         valuation: medusaProduct.metadata?.valuation,
         faceValue: medusaProduct.metadata?.face_value,
         shareType: medusaProduct.metadata?.share_type,
         depository: medusaProduct.metadata?.depository,
+        industry: medusaProduct.metadata?.industry,
+        cin: medusaProduct.metadata?.cin,
+        panNumber: medusaProduct.metadata?.pan_number,
+        rta: medusaProduct.metadata?.rta,
+        totalShares: medusaProduct.metadata?.total_shares,
+        fiftyTwoWeekHigh: medusaProduct.metadata?.fifty_two_week_high,
+        fiftyTwoWeekLow: medusaProduct.metadata?.fifty_two_week_low,
         lotSize: medusaProduct.metadata?.lot_size,
         availability: medusaProduct.metadata?.availability_percent,
         revenueValue: medusaProduct.metadata?.revenue_value,
         profitValue: medusaProduct.metadata?.profit_value,
         revenueGrowth: medusaProduct.metadata?.revenue_growth,
-        profitGrowth: medusaProduct.metadata?.profit_growth
+        profitGrowth: medusaProduct.metadata?.profit_growth,
     };
 };

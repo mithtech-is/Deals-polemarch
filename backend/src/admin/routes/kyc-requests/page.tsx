@@ -114,7 +114,7 @@ const KycRequestsPage = () => {
             <Table.Row key={request.customerId}>
               <Table.Cell
                 className="cursor-pointer hover:underline"
-                onClick={() => navigate(`/admin/customers/${request.customerId}`)}
+                onClick={() => navigate(`/customers/${request.customerId}`)}
               >
                 <div className="flex flex-col">
                   <span className="font-bold text-ui-fg-base">{request.name}</span>

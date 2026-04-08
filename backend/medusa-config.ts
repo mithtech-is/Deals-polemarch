@@ -59,6 +59,9 @@ export default defineConfig({
         polemarch: {
             resolve: "./src/modules/polemarch/index.js",
         },
+        calcula: {
+            resolve: "./src/modules/calcula/index",
+        },
         ...analyticsModule,
     },
 })

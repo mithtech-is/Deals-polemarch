@@ -46,6 +46,30 @@ class FileService {
             throw new Error("Failed to save file");
         }
     }
+    async deleteLocal(url) {
+        if (!url || typeof url !== "string") return { success: false };
+        // Strict prefix check
+        if (!url.startsWith("/static/")) return { success: false };
+        // Extract basename, reject any path traversal
+        const fileName = path.basename(url);
+        if (!fileName || fileName.includes("..") || fileName.includes("/") || fileName.includes("\\")) {
+            return { success: false };
+        }
+        const filePath = path.join(this.staticDir, fileName);
+        // Ensure resolved path stays inside staticDir
+        const resolved = path.resolve(filePath);
+        if (!resolved.startsWith(path.resolve(this.staticDir) + path.sep)) {
+            return { success: false };
+        }
+        try {
+            if (fs.existsSync(resolved)) {
+                fs.unlinkSync(resolved);
+            }
+            return { success: true };
+        } catch (error) {
+            return { success: false };
+        }
+    }
 }
 
 class PolemarchModuleService extends MedusaService({
@@ -60,6 +84,9 @@ class PolemarchModuleService extends MedusaService({
     // File Service methods proxy
     async uploadLocal(file) {
         return await this.fileService.uploadLocal(file);
+    }
+    async deleteFile(url) {
+        return await this.fileService.deleteLocal(url);
     }
 }
 

@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 export default function CartPage() {
-    const { items, removeItem, updateItem, totalAmount, totalItems } = useCart();
+    const { items, removeItem, updateItem, totalAmount, totalItems, totalProcessingFee, totalLowQtyFee, totalPayable } = useCart();
     const [removingId, setRemovingId] = useState<string | null>(null);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -91,7 +91,13 @@ export default function CartPage() {
                                         <div className="flex items-center gap-8">
                                             <div className="text-right">
                                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Total</p>
-                                                <p className="font-bold text-slate-900">₹{(item.price * item.quantity).toLocaleString()}</p>
+                                                <p className="font-bold text-slate-900">₹{(item.price * item.quantity).toLocaleString("en-IN")}</p>
+                                                <p className="text-[10px] text-slate-500 mt-1">
+                                                    + ₹{item.processingFee.toLocaleString("en-IN")} fee
+                                                    {item.lowQtyFee > 0 && (
+                                                        <span className="text-amber-700"> + ₹{item.lowQtyFee} low-qty</span>
+                                                    )}
+                                                </p>
                                             </div>
                                             <button
                                                 onClick={() => handleRemove(item.id)}
@@ -121,18 +127,27 @@ export default function CartPage() {
                                         </div>
                                         <div className="flex justify-between items-center text-sm">
                                             <span className="text-slate-400">Subtotal</span>
-                                            <span className="font-bold">₹{totalAmount.toLocaleString()}</span>
+                                            <span className="font-bold">₹{totalAmount.toLocaleString("en-IN")}</span>
                                         </div>
                                         <div className="flex justify-between items-center text-sm">
-                                            <span className="text-slate-400">Stamp Duty & Charges</span>
-                                            <span className="font-bold">₹{Math.ceil(totalAmount * 0.00015).toLocaleString()}</span>
+                                            <span className="text-slate-400">Processing Fee (2%)</span>
+                                            <span className="font-bold">₹{totalProcessingFee.toLocaleString("en-IN")}</span>
                                         </div>
+                                        {totalLowQtyFee > 0 && (
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-amber-400">
+                                                    Low Quantity Fee
+                                                    <span className="block text-[10px] text-amber-500/80 font-normal">Per ISIN below ₹10,000</span>
+                                                </span>
+                                                <span className="font-bold text-amber-400">₹{totalLowQtyFee.toLocaleString("en-IN")}</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="pt-8 border-t border-white/10 mb-8">
                                         <div className="flex justify-between items-end">
                                             <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Total Payable</span>
-                                            <span className="text-3xl font-bold text-primary">₹{Math.ceil(totalAmount * 1.00015).toLocaleString()}</span>
+                                            <span className="text-3xl font-bold text-primary">₹{totalPayable.toLocaleString("en-IN")}</span>
                                         </div>
                                     </div>
 

@@ -10,12 +10,26 @@ import { ArrowLeft, Info, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { useUser } from "@/context/UserContext";
+import {
+    getCompanyFinancials,
+    getOverviewValue,
+    getRatioValue,
+    formatFinancialValue,
+    type CalculaCompanyData,
+} from "@/lib/calcula";
+import { PriceChart } from "@/components/product/PriceChart";
+import { FinancialStatements } from "@/components/product/FinancialStatements";
+import { NewsPanel } from "@/components/product/NewsPanel";
+import { ProsConsPanel } from "@/components/product/ProsConsPanel";
+import { CompanyOverviewPanel } from "@/components/product/CompanyOverviewPanel";
+import { EventTimeline } from "@/components/product/EventTimeline";
 
 export default function DealDetailPage() {
     const params = useParams();
     const router = useRouter();
     const id = params.id as string;
     const [deal, setDeal] = useState<Deal | null>(null);
+    const [financials, setFinancials] = useState<CalculaCompanyData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const { addItem } = useCart();
     const { user } = useUser();
@@ -38,7 +52,13 @@ export default function DealDetailPage() {
                     return;
                 }
 
-                setDeal(mapMedusaToDeal(product));
+                const mappedDeal = mapMedusaToDeal(product);
+                setDeal(mappedDeal);
+
+                // Fetch live financial data from Medusa's synced Calcula store (matched by ISIN)
+                if (mappedDeal.isin) {
+                    getCompanyFinancials(mappedDeal.isin).then(setFinancials);
+                }
             } catch (error) {
                 console.error("Error fetching deal:", error);
             } finally {
@@ -52,9 +72,11 @@ export default function DealDetailPage() {
 
     useEffect(() => {
         if (deal) {
-            setQuantity(deal.minInvestment || 1);
+            setQuantity(1000);
         }
     }, [deal]);
+
+    const QUICK_QTYS = [1000, 5000, 10000, 50000, 100000];
 
     const handleAddToCart = () => {
         if (!user) {
@@ -100,49 +122,84 @@ export default function DealDetailPage() {
                 </span>
             </div>
 
-            <div className="mb-6">
-                <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-3">
-                    <label className="text-sm font-medium text-slate-700">
-                        Quantity <span className="text-slate-400 font-normal">(Lot size {deal.lotSize || deal.minInvestment || 1})</span>
-                    </label>
-                    <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-1">
-                        <button
-                            onClick={() => setQuantity(Math.max(deal.lotSize || deal.minInvestment || 1, quantity - (deal.lotSize || deal.minInvestment || 1)))}
-                            className="h-8 w-8 rounded bg-white border border-slate-200 flex items-center justify-center text-sm font-bold hover:bg-slate-50 transition-all font-mono"
-                        >
-                            -
-                        </button>
-                        <input
-                            type="number"
-                            value={quantity}
-                            onChange={(e) => setQuantity(Math.max(deal.lotSize || deal.minInvestment || 1, parseInt(e.target.value) || (deal.lotSize || deal.minInvestment || 1)))}
-                            className="w-12 bg-transparent text-center text-sm font-bold focus:outline-none border-none p-0"
-                        />
-                        <button
-                            onClick={() => setQuantity(quantity + (deal.lotSize || deal.minInvestment || 1))}
-                            className="h-8 w-8 rounded bg-white border border-slate-200 flex items-center justify-center text-sm font-bold hover:bg-slate-50 transition-all font-mono"
-                        >
-                            +
-                        </button>
-                    </div>
-                </div>
-            </div>
+            {(() => {
+                const investment = deal.price * quantity;
+                const processingFee = investment * 0.02;
+                const lowQtyFee = investment > 0 && investment < 10000 ? 250 : 0;
+                const total = investment + processingFee + lowQtyFee;
+                return (
+                    <>
+                        <div className="mb-6 border-b border-slate-100 pb-5">
+                            <div className="flex items-baseline justify-between mb-2">
+                                <label htmlFor="qty-input" className="text-sm font-medium text-slate-700">
+                                    Quantity
+                                </label>
+                                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                                    Custom qty supported
+                                </span>
+                            </div>
+                            <input
+                                id="qty-input"
+                                type="number"
+                                inputMode="numeric"
+                                min={1}
+                                step={1}
+                                value={quantity}
+                                onChange={(e) => {
+                                    const v = parseInt(e.target.value, 10);
+                                    setQuantity(Number.isFinite(v) && v >= 1 ? v : 1);
+                                }}
+                                placeholder="Type any quantity, e.g. 1,27,500"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-base font-bold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500"
+                            />
+                            <p className="text-[10px] text-slate-500 mt-1.5">
+                                Type your own number above or pick a preset below.
+                            </p>
+                            <div className="flex flex-wrap gap-2 mt-3">
+                                {QUICK_QTYS.map((q) => (
+                                    <button
+                                        key={q}
+                                        type="button"
+                                        onClick={() => setQuantity(q)}
+                                        className={`px-2.5 py-1 text-[11px] font-bold rounded-md border transition-colors ${
+                                            quantity === q
+                                                ? "bg-emerald-600 text-white border-emerald-600"
+                                                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                        }`}
+                                    >
+                                        {q.toLocaleString("en-IN")}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
-            <div className="space-y-3 mb-8">
-                <div className="flex justify-between">
-                    <span className="text-sm text-slate-500">Investment Value</span>
-                    <span className="text-sm font-bold">Rs. {(deal.price * quantity).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-sm text-slate-500">Processing Fee (2%)</span>
-                    <span className="text-sm font-bold">Rs. {(deal.price * quantity * 0.02).toLocaleString()}</span>
-                </div>
+                        <div className="space-y-3 mb-8">
+                            <div className="flex justify-between">
+                                <span className="text-sm text-slate-500">Investment Value</span>
+                                <span className="text-sm font-bold">Rs. {investment.toLocaleString("en-IN")}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-sm text-slate-500">Processing Fee (2%)</span>
+                                <span className="text-sm font-bold">Rs. {processingFee.toLocaleString("en-IN")}</span>
+                            </div>
+                            {lowQtyFee > 0 && (
+                                <div className="flex justify-between">
+                                    <span className="text-sm text-amber-700">
+                                        Low Quantity Fee
+                                        <span className="block text-[10px] text-amber-600 font-normal">Order below Rs. 10,000</span>
+                                    </span>
+                                    <span className="text-sm font-bold text-amber-700">Rs. {lowQtyFee.toLocaleString("en-IN")}</span>
+                                </div>
+                            )}
 
-                <div className="flex justify-between pt-3 border-t border-slate-100">
-                    <span className="text-base font-bold text-slate-900">Total Payable</span>
-                    <span className="text-lg font-bold text-slate-900">Rs. {(deal.price * quantity * 1.02).toLocaleString()}</span>
-                </div>
-            </div>
+                            <div className="flex justify-between pt-3 border-t border-slate-100">
+                                <span className="text-base font-bold text-slate-900">Total Payable</span>
+                                <span className="text-lg font-bold text-slate-900">Rs. {total.toLocaleString("en-IN")}</span>
+                            </div>
+                        </div>
+                    </>
+                );
+            })()}
 
             <button
                 disabled={deal.price <= 0 || (Boolean(user) && !isKycApproved)}
@@ -202,62 +259,63 @@ export default function DealDetailPage() {
                                 {renderBuyBox()}
                             </div>
 
-                            <div className="bg-white rounded-2xl p-8 border border-slate-100 shadow-sm relative overflow-hidden">
-                                <div className="flex justify-between items-start mb-12">
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Current Share Price</p>
-                                        <div className="flex items-center gap-4">
-                                            <h2 className="text-4xl font-bold">Rs. {deal.price.toLocaleString()}</h2>
-                                            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
-                                                ~ +0.0% (1Y)
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        {["1W", "1M", "6M", "1Y"].map((tf) => (
-                                            <button key={tf} className={`px-3 py-1 text-xs font-bold rounded-md ${tf === "1Y" ? "bg-slate-100 text-slate-900" : "text-slate-400 hover:bg-slate-50"}`}>
-                                                {tf}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="h-48 w-full relative">
-                                    <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                                        <path d="M0,25 C20,25 30,30 50,15 C70,0 80,10 100,5" fill="none" stroke="#10b981" strokeWidth="1.5" />
-                                        <path d="M0,25 C20,25 30,30 50,15 C70,0 80,10 100,5 L100,30 L0,30 Z" fill="url(#gradient)" stroke="none" />
-                                        <defs>
-                                            <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                                <stop offset="0%" stopColor="#10b981" stopOpacity="0.1" />
-                                                <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
-                                            </linearGradient>
-                                        </defs>
-                                    </svg>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                                {[
-                                    { label: "ISIN", value: deal.isin || "-" },
-                                    { label: "MKT CAP", value: deal.marketCap || "-" },
-                                    { label: "P/E RATIO", value: deal.peRatio || "-" },
-                                    { label: "ROE", value: deal.roe ? `${deal.roe}%` : "-" },
-                                    { label: "REVENUE", value: deal.revenue || "-" },
-                                ].map((metric, idx) => (
-                                    <div key={idx} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                                        <p className="text-[10px] text-slate-500 font-bold mb-1">{metric.label}</p>
-                                        <p className="font-bold text-slate-900 text-sm overflow-hidden text-ellipsis">{metric.value}</p>
-                                    </div>
-                                ))}
-                            </div>
+                            {deal.isin && <PriceChart isin={deal.isin} />}
 
                             <div className="pt-6">
-                                <div className="flex items-center gap-3 mb-4">
+                                <div className="flex items-center gap-3 mb-6">
                                     <div className="h-6 w-1 bg-emerald-700 rounded-full"></div>
-                                    <h3 className="text-xl font-bold">Company Overview</h3>
+                                    <h3 className="text-xl font-bold">Company Details</h3>
                                 </div>
-                                <div className="text-slate-600 text-sm leading-relaxed prose prose-slate">
-                                    {deal.description || deal.summary || "-"}
+
+                                <div className="bg-slate-50 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-0">
+                                    {[
+                                        { label: "Sector", value: financials?.sector || deal.sector || "-" },
+                                        { label: "Market Cap", value: financials?.market_cap || deal.marketCap || "-" },
+                                        { label: "Industry", value: financials?.industry || deal.industry || "-" },
+                                        { label: "P/E Ratio", value: financials?.pe_ratio || deal.peRatio || "N/A" },
+                                        { label: "Share Type", value: financials?.share_type || deal.shareType || "-" },
+                                        { label: "P/B Ratio", value: financials?.pb_ratio || deal.pbRatio || "N/A" },
+                                        { label: "Lot Size", value: (() => {
+                                            const ls = financials?.lot_size || deal.lotSize;
+                                            return ls ? `${ls.toLocaleString()} Shares` : "-";
+                                        })() },
+                                        { label: "Debt to Equity", value: financials?.debt_to_equity || deal.debtToEquity || "N/A" },
+                                        { label: "52 Week High", value: (() => {
+                                            const v = financials?.fifty_two_week_high || deal.fiftyTwoWeekHigh;
+                                            return v ? `₹ ${v}` : "-";
+                                        })() },
+                                        { label: "ROE (%)", value: (() => {
+                                            const liveRoe = getRatioValue(financials?.ratios ?? null, "roe");
+                                            if (liveRoe !== null) return `${(liveRoe * 100).toFixed(1)}%`;
+                                            return financials?.roe_value || deal.roe || "N/A";
+                                        })() },
+                                        { label: "52 Week Low", value: (() => {
+                                            const v = financials?.fifty_two_week_low || deal.fiftyTwoWeekLow;
+                                            return v ? `₹ ${v}` : "-";
+                                        })() },
+                                        { label: "Book Value", value: financials?.book_value || deal.bookValue || "N/A" },
+                                        { label: "Depository", value: financials?.depository || deal.depository || "-" },
+                                        { label: "Face Value", value: (() => {
+                                            const v = financials?.face_value || deal.faceValue;
+                                            return v ? `₹ ${v}` : "-";
+                                        })() },
+                                        { label: "PAN Number", value: financials?.pan_number || deal.panNumber || "N/A" },
+                                        { label: "Total Shares", value: (() => {
+                                            const v = financials?.total_shares || deal.totalShares;
+                                            return v ? Number(v).toLocaleString("en-IN") : "-";
+                                        })() },
+                                        { label: "ISIN Number", value: financials?.isin || deal.isin || "-" },
+                                        { label: "Founded", value: financials?.founded || deal.founded || "-" },
+                                        { label: "CIN", value: financials?.cin || deal.cin || "N/A" },
+                                        { label: "Headquarters", value: financials?.headquarters || deal.headquarters || "-" },
+                                        { label: "RTA", value: financials?.rta || deal.rta || "N/A" },
+                                        { label: "Valuation", value: financials?.valuation || deal.valuation || "-" },
+                                    ].map((item, idx) => (
+                                        <div key={idx} className="flex justify-between items-center border-b border-slate-200 py-3">
+                                            <span className="text-xs text-slate-500">{item.label}</span>
+                                            <span className="text-sm font-bold text-slate-900">{item.value}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 
@@ -270,10 +328,14 @@ export default function DealDetailPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="bg-white border border-slate-100 rounded-2xl p-6 flex justify-between shadow-sm">
                                         <div>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">REVENUE (FY24)</p>
-                                            <h4 className="text-2xl font-bold mb-1">{deal.revenueValue || "-"}</h4>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">REVENUE</p>
+                                            <h4 className="text-2xl font-bold mb-1">
+                                                {formatFinancialValue(getOverviewValue(financials?.overview ?? null, "revenue")) !== "—"
+                                                    ? formatFinancialValue(getOverviewValue(financials?.overview ?? null, "revenue"))
+                                                    : deal.revenueValue || "-"}
+                                            </h4>
                                             <p className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                                                Up {deal.revenueGrowth || "-"} YoY
+                                                {deal.revenueGrowth ? `Up ${deal.revenueGrowth} YoY` : "\u00A0"}
                                             </p>
                                         </div>
                                         <BarChart3 className="h-10 w-10 text-emerald-700 opacity-20 mt-auto" />
@@ -281,38 +343,71 @@ export default function DealDetailPage() {
                                     <div className="bg-white border border-slate-100 rounded-2xl p-6 flex justify-between shadow-sm">
                                         <div>
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">PROFIT AFTER TAX</p>
-                                            <h4 className="text-2xl font-bold mb-1">{deal.profitValue || "-"}</h4>
+                                            <h4 className="text-2xl font-bold mb-1">
+                                                {formatFinancialValue(getOverviewValue(financials?.overview ?? null, "net_profit")) !== "—"
+                                                    ? formatFinancialValue(getOverviewValue(financials?.overview ?? null, "net_profit"))
+                                                    : deal.profitValue || "-"}
+                                            </h4>
                                             <p className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                                                Up {deal.profitGrowth || "-"} YoY
+                                                {deal.profitGrowth ? `Up ${deal.profitGrowth} YoY` : "\u00A0"}
                                             </p>
                                         </div>
                                         <BarChart3 className="h-10 w-10 text-emerald-700 opacity-20 mt-auto" />
                                     </div>
                                 </div>
+
+                                {/* Additional ratios from Calcula */}
+                                {financials?.ratios && financials.ratios.length > 0 && (
+                                    <div className="grid grid-cols-3 gap-4 mt-6">
+                                        {[
+                                            { label: "Debt/Equity", code: "debt_to_equity", format: (v: number) => v.toFixed(2) },
+                                            { label: "ROE", code: "roe", format: (v: number) => `${(v * 100).toFixed(1)}%` },
+                                            { label: "Current Ratio", code: "current_ratio", format: (v: number) => v.toFixed(2) },
+                                        ].map((item, idx) => {
+                                            const val = getRatioValue(financials.ratios, item.code);
+                                            return (
+                                                <div key={idx} className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-center">
+                                                    <p className="text-[10px] text-slate-500 font-bold mb-1">{item.label}</p>
+                                                    <p className="font-bold text-slate-900 text-lg">
+                                                        {val !== null ? item.format(val) : "-"}
+                                                    </p>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="pt-6">
-                                <div className="flex items-center gap-3 mb-6">
-                                    <div className="h-6 w-1 bg-emerald-700 rounded-full"></div>
-                                    <h3 className="text-xl font-bold">Company Details</h3>
+                            {deal.isin && (
+                                <div className="pt-6">
+                                    <FinancialStatements isin={deal.isin} />
                                 </div>
+                            )}
 
-                                <div className="bg-slate-50 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                                    {[
-                                        { label: "Founded", value: deal.founded || "-" },
-                                        { label: "Headquarters", value: deal.headquarters || "-" },
-                                        { label: "Valuation", value: deal.valuation || "-" },
-                                        { label: "Face Value", value: deal.faceValue ? `Rs. ${deal.faceValue}` : "-" },
-                                        { label: "Share Type", value: deal.shareType || "-" },
-                                        { label: "Depository", value: deal.depository || "-" },
-                                    ].map((item, idx) => (
-                                        <div key={idx} className="flex justify-between items-center border-b border-slate-200 pb-3 last:border-0 md:[&:nth-last-child(2)]:border-0 md:last:border-b-0">
-                                            <span className="text-xs text-slate-500">{item.label}</span>
-                                            <span className="text-sm font-bold text-slate-900">{item.value}</span>
-                                        </div>
-                                    ))}
+                            {deal.isin && (
+                                <div className="pt-6">
+                                    <CompanyOverviewPanel isin={deal.isin} />
                                 </div>
-                            </div>
+                            )}
+
+                            {deal.isin && (
+                                <div className="pt-6">
+                                    <ProsConsPanel isin={deal.isin} />
+                                </div>
+                            )}
+
+                            {deal.isin && (
+                                <div className="pt-6">
+                                    <NewsPanel isin={deal.isin} />
+                                </div>
+                            )}
+
+                            {deal.isin && (
+                                <div className="pt-6">
+                                    <EventTimeline isin={deal.isin} />
+                                </div>
+                            )}
+
                         </div>
 
                         <div className="hidden lg:block lg:sticky lg:top-8 h-fit lg:col-span-1">

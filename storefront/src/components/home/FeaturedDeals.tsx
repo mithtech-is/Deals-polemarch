@@ -3,43 +3,11 @@ import DealCard from "./DealCard";
 import { type Deal } from "@/data/deals";
 import { mapMedusaToDeal, medusaClient } from "@/lib/medusa";
 
-const MEDUSA_BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
-
 const FeaturedDeals = async () => {
     let deals: Deal[] = [];
     try {
-        let regionId: string | undefined;
-        let currencyCode: string | undefined;
-
-        try {
-            const { regions } = await medusaClient.regions.list();
-            regionId = regions?.[0]?.id;
-            currencyCode = regions?.[0]?.currency_code;
-        } catch (regionError) {
-            console.error("Error fetching active region for featured deals:", regionError);
-        }
-
-        const query = new URLSearchParams();
-        if (regionId) query.append("region_id", regionId);
-        if (currencyCode) query.append("currency_code", currencyCode);
-
-        const response = await fetch(`${MEDUSA_BACKEND_URL}/store/products?${query.toString()}`, {
-            headers: {
-                "Content-Type": "application/json",
-                "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
-            },
-            cache: "no-store",
-            credentials: "include",
-        });
-
-        if (!response.ok) {
-            throw new Error("Failed to fetch featured deals");
-        }
-
-        const data = await response.json();
-        const products = Array.isArray(data.products) ? data.products : [];
-
-        deals = products
+        const { products } = await medusaClient.products.list();
+        deals = (products ?? [])
             .map(mapMedusaToDeal)
             .filter((deal: Deal) => deal.isTrending)
             .slice(0, 3);

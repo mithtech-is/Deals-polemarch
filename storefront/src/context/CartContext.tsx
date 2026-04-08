@@ -13,6 +13,8 @@ interface CartItem {
     quantity: number;
     logo: string;
     minInvestment: number;
+    processingFee: number;
+    lowQtyFee: number;
 }
 
 interface MedusaCartLineItem {
@@ -24,7 +26,20 @@ interface MedusaCartLineItem {
     thumbnail?: string | null;
     metadata?: {
         min_investment?: number;
+        processing_fee?: number;
+        low_qty_fee?: number;
     } | null;
+}
+
+const LOW_QTY_FEE_THRESHOLD = 10000;
+const LOW_QTY_FEE_AMOUNT = 250;
+const PROCESSING_FEE_RATE = 0.02;
+
+export function computeLineFees(unitPrice: number, quantity: number) {
+    const investment = unitPrice * quantity;
+    const processingFee = investment * PROCESSING_FEE_RATE;
+    const lowQtyFee = investment > 0 && investment < LOW_QTY_FEE_THRESHOLD ? LOW_QTY_FEE_AMOUNT : 0;
+    return { investment, processingFee, lowQtyFee };
 }
 
 interface ErrorWithMessage {
@@ -39,6 +54,9 @@ interface CartContextType {
     clearCart: () => void;
     totalItems: number;
     totalAmount: number;
+    totalProcessingFee: number;
+    totalLowQtyFee: number;
+    totalPayable: number;
     cartId: string | null;
 }
 
@@ -55,15 +73,25 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     const refreshCart = useCallback(async (id: string) => {
         try {
             const { cart } = await medusaClient.carts.retrieve(id);
-            const mappedItems = cart.items.map((item: MedusaCartLineItem) => ({
-                id: item.id,
-                variant_id: item.variant_id,
-                name: item.title,
-                price: item.unit_price,
-                quantity: item.quantity,
-                logo: item.thumbnail || "",
-                minInvestment: item.metadata?.min_investment || 1,
-            }));
+            const mappedItems = cart.items.map((item: MedusaCartLineItem) => {
+                const storedProc = item.metadata?.processing_fee;
+                const storedLow = item.metadata?.low_qty_fee;
+                // Fall back to live-recompute if the line was added before fees
+                // were persisted (or if the qty was edited post-add via the
+                // stock cart update path).
+                const fallback = computeLineFees(item.unit_price, item.quantity);
+                return {
+                    id: item.id,
+                    variant_id: item.variant_id,
+                    name: item.title,
+                    price: item.unit_price,
+                    quantity: item.quantity,
+                    logo: item.thumbnail || "",
+                    minInvestment: item.metadata?.min_investment || 1,
+                    processingFee: typeof storedProc === "number" ? storedProc : fallback.processingFee,
+                    lowQtyFee: typeof storedLow === "number" ? storedLow : fallback.lowQtyFee,
+                };
+            });
             setItems(mappedItems);
         } catch (error) {
             console.error("Error refreshing cart:", error);
@@ -77,8 +105,6 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         const initCart = async () => {
             if (typeof window === "undefined") return;
-
-            await medusaClient.regions.list();
 
             const existingId = localStorage.getItem(CART_ID_KEY);
             if (existingId) {
@@ -108,7 +134,15 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     const addItem = async (variantId: string, quantity: number, minInvestment: number = 1) => {
         try {
             const currentCartId = await getOrCreateCart();
-            await medusaClient.carts.addItems(currentCartId, variantId, quantity, { min_investment: minInvestment });
+            // The unit price isn't known here (the deal page has it but we
+            // don't want a bigger addItem signature). Medusa will echo the
+            // unit_price back on refresh, so fees are always derived from the
+            // authoritative server price. Pass a marker so refreshCart knows
+            // to compute — or simply always recompute in refresh (see
+            // computeLineFees fallback above).
+            await medusaClient.carts.addItems(currentCartId, variantId, quantity, {
+                min_investment: minInvestment,
+            });
             await refreshCart(currentCartId);
             setShowSuccessModal(true);
         } catch (error: unknown) {
@@ -147,9 +181,26 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
     const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
     const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const totalProcessingFee = items.reduce((sum, item) => sum + item.processingFee, 0);
+    const totalLowQtyFee = items.reduce((sum, item) => sum + item.lowQtyFee, 0);
+    const totalPayable = totalAmount + totalProcessingFee + totalLowQtyFee;
 
     return (
-        <CartContext.Provider value={{ items, addItem, removeItem, updateItem, clearCart, totalItems, totalAmount, cartId }}>
+        <CartContext.Provider
+            value={{
+                items,
+                addItem,
+                removeItem,
+                updateItem,
+                clearCart,
+                totalItems,
+                totalAmount,
+                totalProcessingFee,
+                totalLowQtyFee,
+                totalPayable,
+                cartId,
+            }}
+        >
             {children}
 
             {showSuccessModal && (
