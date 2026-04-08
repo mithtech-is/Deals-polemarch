@@ -1,13 +1,14 @@
 import { Metadata } from "next";
 import { medusaClient, mapMedusaToDeal } from "./medusa";
+import type { Deal } from "@/data/deals";
 
 export async function generateDealMetadata(id: string): Promise<Metadata> {
-    let deal: any = null;
+    let deal: Deal | null = null;
 
     try {
         const { product } = await medusaClient.products.retrieve(id);
         deal = mapMedusaToDeal(product);
-    } catch (error) {
+    } catch {
         return {
             title: "Unlisted Share Deal | Polemarch",
             description: "Invest in high-growth unlisted shares with Polemarch.",

@@ -40,6 +40,22 @@ debug_output.json
 .DS_Store
 *.pem
 
+# Claude tooling (local-only)
+.claude/
+!.claude/.gitkeep
+
+# Scratch + debug dumps (never commit these)
+tmp.json
+tmp.*
+tmp_*.txt
+output.json
+products.json
+variant.json
+services.json
+services_new.json
+*.dump
+*.bak
+
 # IDE & OS files
 .idea/
 .vscode/

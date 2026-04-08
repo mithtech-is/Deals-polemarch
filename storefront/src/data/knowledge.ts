@@ -1,4 +1,5 @@
-import { Book, TrendingUp, FileText, HelpCircle } from "lucide-react";
+// Icons are referenced by string name (not JSX) so no lucide-react imports
+// needed here — the consumer resolves the string to a component at render.
 
 export const KNOWLEDGE_CATEGORIES = [
     {

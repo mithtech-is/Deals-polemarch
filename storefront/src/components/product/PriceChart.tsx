@@ -36,7 +36,6 @@ const ReactECharts = dynamic(
 
 type RangeKey = "1M" | "6M" | "1Y" | "3Y" | "5Y" | "MAX" | "CUSTOM";
 type PresetRangeKey = Exclude<RangeKey, "CUSTOM">;
-type Granularity = "daily" | "weekly";
 
 const RANGE_MS: Record<Exclude<PresetRangeKey, "MAX">, number> = {
   "1M": 30 * 24 * 3600 * 1000,
@@ -106,46 +105,6 @@ function fromIsoDate(s: string): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-/**
- * Downsample a raw [ts, price] series by bucket. Each bucket keeps the
- * LAST point whose timestamp falls inside it (so the chart tracks the
- * most recent close for the day/week). Buckets are evaluated in UTC to
- * match the rest of the pipeline (Calcula's `datetime` is Timestamptz).
- *
- * Returns the series unchanged if `granularity === "daily"` and the
- * source already has ≤1 point per day — the bucket map is O(n) either
- * way so we don't bother short-circuiting.
- */
-function downsample(
-  points: [number, number][],
-  granularity: Granularity
-): [number, number][] {
-  if (points.length === 0) return points;
-  // Bucket key = floor(ts / bucketSize) in UTC.
-  // Weekly bucket: align to Monday 00:00 UTC by subtracting the day-of-week.
-  const bucketed = new Map<number, [number, number]>();
-  for (const [ts, price] of points) {
-    let key: number;
-    if (granularity === "daily") {
-      key = Math.floor(ts / 86_400_000);
-    } else {
-      // ISO week: Mon=1, Sun=7. JS Date.getUTCDay(): Sun=0..Sat=6.
-      const d = new Date(ts);
-      const dayOfWeekMon0 = (d.getUTCDay() + 6) % 7; // Mon=0 ... Sun=6
-      const mondayMs = Date.UTC(
-        d.getUTCFullYear(),
-        d.getUTCMonth(),
-        d.getUTCDate() - dayOfWeekMon0
-      );
-      key = Math.floor(mondayMs / 86_400_000);
-    }
-    // Last-write-wins inside the bucket; input is assumed time-ascending
-    // (it is — see Calcula's snapshotsService.pricesByIsin orderBy).
-    bucketed.set(key, [ts, price]);
-  }
-  return Array.from(bucketed.values()).sort((a, b) => a[0] - b[0]);
-}
-
 type Props = {
   isin: string;
 };
@@ -155,8 +114,6 @@ export function PriceChart({ isin }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [range, setRange] = useState<RangeKey>("MAX");
-  // Daily vs. weekly downsampling. Buckets by UTC day / ISO week.
-  const [granularity, setGranularity] = useState<Granularity>("daily");
   // Custom date range: [startMs, endMs] in UTC. Only used when range === "CUSTOM".
   const [customRange, setCustomRange] = useState<[number, number] | null>(null);
   const [customPickerOpen, setCustomPickerOpen] = useState(false);
@@ -260,12 +217,11 @@ export function PriceChart({ isin }: Props) {
     };
   }, [isin]);
 
-  // Downsampled series (daily/weekly). The full series is always held in
-  // memory — we just bucket on render. Pure function, no network.
+  // Full price series — no downsampling.
   const chartPoints = useMemo(() => {
     if (!snapshot) return [] as [number, number][];
-    return downsample(snapshot.prices, granularity);
-  }, [snapshot, granularity]);
+    return snapshot.prices;
+  }, [snapshot]);
 
   // Header: current price + absolute/percent change over the selected range
   const header = useMemo(() => {
@@ -589,23 +545,6 @@ export function PriceChart({ isin }: Props) {
             )}
           </div>
 
-          {/* Granularity: Daily / Weekly */}
-          <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden ml-1">
-            {(["daily", "weekly"] as Granularity[]).map((g) => (
-              <button
-                key={g}
-                type="button"
-                onClick={() => setGranularity(g)}
-                className={`px-3 py-1.5 text-xs font-bold transition-colors ${
-                  g === granularity
-                    ? "bg-slate-900 text-white"
-                    : "bg-white text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                {g === "daily" ? "Daily" : "Weekly"}
-              </button>
-            ))}
-          </div>
         </div>
 
         {snapshot && snapshot.events.length > 0 && (

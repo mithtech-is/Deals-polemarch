@@ -4,6 +4,7 @@ export default async function notificationHandler({
   event,
   container,
 }: SubscriberArgs<any>) {
+  try {
   const polemarchModule = container.resolve("polemarch") as any
   const { name, data } = event
   const customerId = data?.customer_id
@@ -62,6 +63,9 @@ export default async function notificationHandler({
       message,
       type,
     })
+  }
+  } catch (err) {
+    console.error("[notification-handler] failed:", err)
   }
 }
 
