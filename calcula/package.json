@@ -1,0 +1,16 @@
+{
+  "name": "calcula",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Clean rebuild workspace for Calcula",
+  "workspaces": [
+    "apps/backend",
+    "apps/frontend"
+  ],
+  "scripts": {
+    "bootstrap": "echo 'Initialize backend/frontend apps here'"
+  },
+  "dependencies": {
+    "@as-integrations/express5": "^1.1.2"
+  }
+}

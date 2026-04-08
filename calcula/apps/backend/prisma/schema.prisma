@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlatformRole {
+  ADMIN
+
+  @@map("platform_role")
+}
+
+enum StatementType {
+  balance_sheet
+  pnl
+  cashflow
+  derived
+
+  @@map("statement_type")
+}
+
+enum MetricValueSource {
+  manual
+  derived
+
+  @@map("metric_value_source")
+}
+
+model PlatformUser {
+  id           String       @id @default(uuid()) @db.Uuid
+  username     String       @unique
+  passwordHash String       @map("password_hash")
+  role         PlatformRole @default(ADMIN)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("platform_users")
+}
+
+model Company {
+  id                 String    @id @default(uuid()) @db.Uuid
+  name               String
+  isin               String    @unique
+  cin                String?
+  sector             String?
+  industry           String?
+  listingStatus      String    @default("unlisted") @map("listing_status")
+  country            String    @default("IN")
+  description        String?
+  // Version tracking for the Medusa snapshot pipeline.
+  // Bumped inside the transactions that write financials / prices / news /
+  // editorial so Medusa can tell what's stale with a single integer
+  // comparison per kind.
+  statementsVersion  Int       @default(0) @map("statements_version")
+  priceVersion       Int       @default(0) @map("price_version")
+  newsVersion        Int       @default(0) @map("news_version")
+  editorialVersion   Int       @default(0) @map("editorial_version")
+  contentUpdatedAt   DateTime  @default(now()) @map("content_updated_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  periods        FinancialPeriod[]
+  metrics        FinancialMetric[]
+  prices         CompanyPriceHistory[]
+  newsEvents     NewsEvent[]
+  overview       CompanyOverview?
+  prosCons       ProsCons?
+
+  @@index([name])
+  @@index([contentUpdatedAt])
+  @@map("companies")
+}
+
+model CompanyPriceHistory {
+  id        BigInt   @id @default(autoincrement())
+  companyId String   @map("company_id") @db.Uuid
+  datetime  DateTime @db.Timestamptz(6)
+  price     Decimal  @db.Decimal(18, 4)
+  note      String?
+  link      String?
+  // Event category for chart markers. One of:
+  //   C = Corporate event (earnings, dividend, split, M&A, fundraising, etc.)
+  //   N = News (media coverage, industry updates, rumors)
+  //   R = Regulatory (SEBI notices, compliance, penalties)
+  // null = plain price point, no marker.
+  category  String?  @db.VarChar(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, datetime])
+  @@index([companyId, datetime(sort: Desc)])
+  @@map("company_price_history")
+}
+
+model FinancialPeriod {
+  id            String   @id @default(uuid()) @db.Uuid
+  companyId     String   @map("company_id") @db.Uuid
+  fiscalYear    Int      @map("fiscal_year")
+  fiscalQuarter Int?     @map("fiscal_quarter")
+  periodStart   DateTime @map("period_start") @db.Date
+  periodEnd     DateTime @map("period_end") @db.Date
+  isAudited     Boolean  @default(false) @map("is_audited")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  values  FinancialMetric[]
+
+  @@unique([companyId, fiscalYear, fiscalQuarter])
+  @@index([companyId, fiscalYear, fiscalQuarter])
+  @@map("financial_periods")
+}
+
+model FinancialLineItem {
+  id           String        @id @default(uuid()) @db.Uuid
+  code         String        @unique
+  name         String
+  parentId     String?       @map("parent_id") @db.Uuid
+  statementType StatementType @map("statement_type")
+  orderCode    String        @default("01") @map("order_code")
+  displayOrder Int           @default(0) @map("display_order")
+  isRequired   Boolean       @default(false) @map("is_required")
+  isCalculated Boolean       @default(false) @map("is_calculated")
+  formula      String?
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  parent   FinancialLineItem?  @relation("LineItemTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children FinancialLineItem[] @relation("LineItemTree")
+  values   FinancialMetric[]
+  remainderParentMappings FinancialRemainderMapping[] @relation("RemainderParent")
+  remainderChildMappings  FinancialRemainderMapping[] @relation("RemainderChild")
+
+  @@index([statementType, orderCode])
+  @@index([parentId, orderCode])
+  @@map("financial_line_items")
+}
+
+model FinancialRemainderMapping {
+  id                  String   @id @default(uuid()) @db.Uuid
+  parentLineItemId    String   @unique @map("parent_line_item_id") @db.Uuid
+  remainderLineItemId String   @map("remainder_line_item_id") @db.Uuid
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  parentLineItem    FinancialLineItem @relation("RemainderParent", fields: [parentLineItemId], references: [id], onDelete: Cascade)
+  remainderLineItem FinancialLineItem @relation("RemainderChild", fields: [remainderLineItemId], references: [id], onDelete: Cascade)
+
+  @@index([remainderLineItemId])
+  @@map("financial_remainder_mappings")
+}
+
+model FinancialMetric {
+  id          BigInt            @id @default(autoincrement())
+  companyId   String            @map("company_id") @db.Uuid
+  periodId    String            @map("period_id") @db.Uuid
+  lineItemId  String            @map("line_item_id") @db.Uuid
+  value       Decimal           @db.Decimal(28, 8)
+  currency    String?           @db.Char(3)
+  valueSource MetricValueSource @default(manual) @map("value_source")
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company  Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  period   FinancialPeriod   @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  lineItem FinancialLineItem @relation(fields: [lineItemId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, periodId, lineItemId])
+  @@index([companyId, periodId])
+  @@index([lineItemId, periodId])
+  @@map("financial_metrics")
+}
+
+// ─── Editorial content ──────────────────────────────────────────
+//
+// NewsEvent, CompanyOverview, ProsCons are the three content types that
+// make up the editorial CMS on top of Calcula. NewsEvent is its own
+// snapshot kind (Phase 3) because events stream in continuously. The
+// other two rarely change and are bundled under a single `editorial`
+// snapshot kind that gets its own version column on Company.
+
+/// Author-curated news + corporate events, rendered on the deal page
+/// news panel and (re-rendering) on the event timeline. Category uses
+/// the same C/N/R vocabulary as CompanyPriceHistory.category so chart
+/// markers and the panel stay in sync.
+model NewsEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  occurredAt  DateTime @map("occurred_at") @db.Timestamptz(6)
+  // 'C' | 'N' | 'R' — same vocabulary as CompanyPriceHistory.category.
+  category    String   @db.VarChar(1)
+  title       String
+  body        String   @db.Text // markdown
+  sourceUrl   String?  @map("source_url")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, occurredAt(sort: Desc)])
+  @@map("news_events")
+}
+
+/// Long-form company narrative. One row per company. Folded into the
+/// `editorial` snapshot bundle.
+model CompanyOverview {
+  id              String   @id @default(uuid()) @db.Uuid
+  companyId       String   @unique @map("company_id") @db.Uuid
+  summary         String   @db.Text // markdown, ~500 words
+  businessModel   String?  @map("business_model") @db.Text
+  competitiveMoat String?  @map("competitive_moat") @db.Text
+  risks           String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_overview")
+}
+
+/// Author-curated investment pros and cons. One row per company.
+/// Folded into the `editorial` snapshot bundle.
+model ProsCons {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @unique @map("company_id") @db.Uuid
+  pros      String   @db.Text // markdown bullet list
+  cons      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("pros_cons")
+}

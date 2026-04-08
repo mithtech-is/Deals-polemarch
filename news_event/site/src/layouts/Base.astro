@@ -1,0 +1,80 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title = 'UnlistedPulse', description = 'Pre-IPO & Unlisted Shares News Aggregator' } = Astro.props;
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+  </head>
+  <body class="bg-gray-50 text-gray-900 min-h-screen">
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <a href="/" class="text-xl font-bold text-gray-900 tracking-tight">
+          Unlisted<span class="text-blue-600">Pulse</span>
+        </a>
+        <nav class="flex gap-6 text-sm font-medium text-gray-600">
+          <a href="/" class="hover:text-gray-900 transition-colors">Dashboard</a>
+          <a href="/news" class="hover:text-gray-900 transition-colors">News</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-6">
+      <slot />
+    </main>
+
+    <!-- Subscribe Banner -->
+    <section class="bg-gray-900 text-white mt-12">
+      <div class="max-w-6xl mx-auto px-4 py-10 text-center">
+        <h2 class="text-xl font-bold mb-2">Stay ahead of the pre-IPO market</h2>
+        <p class="text-gray-400 mb-5 text-sm">Get notified about new DRHP filings, GMP moves, and unlisted share news.</p>
+        <form id="subscribe-form" class="flex gap-2 max-w-md mx-auto">
+          <input
+            type="email"
+            name="email"
+            placeholder="you@example.com"
+            required
+            class="flex-1 px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500"
+          />
+          <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+            Subscribe
+          </button>
+        </form>
+        <p id="subscribe-msg" class="text-sm text-gray-400 mt-3 hidden"></p>
+      </div>
+    </section>
+
+    <footer class="border-t border-gray-200">
+      <div class="max-w-6xl mx-auto px-4 py-6 text-center text-sm text-gray-500">
+        <p>UnlistedPulse - Pre-IPO & Unlisted Shares News Aggregator</p>
+        <p class="mt-1">Data refreshed every 15 minutes</p>
+      </div>
+    </footer>
+
+    <script>
+      document.getElementById('subscribe-form')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const form = e.target as HTMLFormElement;
+        const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+        const msg = document.getElementById('subscribe-msg');
+        if (msg) {
+          msg.textContent = `Thanks! We'll notify ${email} when alerts go live.`;
+          msg.classList.remove('hidden');
+          msg.classList.add('text-green-400');
+        }
+        form.reset();
+      });
+    </script>
+  </body>
+</html>

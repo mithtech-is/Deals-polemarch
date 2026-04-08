@@ -1,0 +1,28 @@
+{
+  "name": "calcula-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "predev": "rm -rf .next tsconfig.tsbuildinfo",
+    "dev": "NODE_OPTIONS='--max-old-space-size=4096' next dev",
+    "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
+    "start": "next start",
+    "clean": "rm -rf .next tsconfig.tsbuildinfo node_modules/.cache",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@visactor/react-vchart": "^2.0.20",
+    "@visactor/react-vtable": "^1.25.0",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.12",
+    "@types/node": "^22.18.1",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.9.2"
+  }
+}

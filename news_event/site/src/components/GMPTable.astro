@@ -1,0 +1,54 @@
+---
+interface Props {
+  entries: Array<{
+    company: string;
+    isin: string | null;
+    ipo_price: number | null;
+    gmp: number | null;
+    gmp_percent: number | null;
+    estimated_listing: number | null;
+    ipo_date: string;
+  }>;
+}
+
+const { entries } = Astro.props;
+---
+
+<div class="overflow-x-auto">
+  {entries.length > 0 ? (
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wider">
+          <th class="py-2 pr-4">IPO</th>
+          <th class="py-2 pr-4">Price</th>
+          <th class="py-2 pr-4">GMP</th>
+          <th class="py-2 pr-4">GMP %</th>
+          <th class="py-2 pr-4">Est. Listing</th>
+          <th class="py-2">Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {entries.map((entry) => (
+          <tr class="border-b border-gray-100 hover:bg-gray-50">
+            <td class="py-2.5 pr-4 font-medium text-gray-900">{entry.company}</td>
+            <td class="py-2.5 pr-4 text-gray-600">{entry.ipo_price ? `₹${entry.ipo_price}` : '-'}</td>
+            <td class={`py-2.5 pr-4 font-medium ${(entry.gmp || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {entry.gmp !== null ? `₹${entry.gmp}` : '-'}
+            </td>
+            <td class={`py-2.5 pr-4 ${(entry.gmp_percent || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {entry.gmp_percent !== null ? `${entry.gmp_percent}%` : '-'}
+            </td>
+            <td class="py-2.5 pr-4 text-gray-600">{entry.estimated_listing ? `₹${entry.estimated_listing}` : '-'}</td>
+            <td class="py-2.5 text-gray-600">{entry.ipo_date || '-'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : (
+    <p class="text-center text-gray-500 py-8 text-sm">
+      GMP data requires headless browser scraping (coming soon).
+      <br />
+      GMP-related news is available in the News section.
+    </p>
+  )}
+</div>

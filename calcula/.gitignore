@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+**/node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Build + generated output
+dist/
+**/dist/
+build/
+**/build/
+.next/
+**/.next/
+*.tsbuildinfo
+
+# Environment (sensitive)
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# IDE + OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Misc
+*.pdf
+*.pem
+APIholding*.pdf
+
+# Claude tooling + worktrees (local-only, NEVER commit)
+.claude/
+.claude/worktrees/
+!.claude/.gitkeep
+
+# Prisma
+apps/backend/prisma/migrations/**/migration_lock.toml
