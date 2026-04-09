@@ -120,6 +120,22 @@ export function PriceHistorySection({ companyId }: Props) {
     void load();
   }, [load]);
 
+  // Sibling components (e.g. the Timeline section) can push events onto
+  // price history; when they do, they dispatch this event so we refetch
+  // without requiring a shared parent state tree.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ companyId?: string }>).detail;
+      if (!detail?.companyId || detail.companyId === companyId) {
+        void load();
+      }
+    };
+    window.addEventListener('calcula:price-history-updated', handler as EventListener);
+    return () =>
+      window.removeEventListener('calcula:price-history-updated', handler as EventListener);
+  }, [companyId, load]);
+
   const latest = rows.length ? rows[0] : null; // server returns DESC
 
   const openNew = () => {

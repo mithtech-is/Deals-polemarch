@@ -55,6 +55,14 @@ export type CompanyProsCons = {
   updatedAt?: string;
 };
 
+export type CompanyFaqItem = { question: string; answer: string };
+
+export type CompanyFaq = {
+  companyId: string;
+  items: CompanyFaqItem[];
+  updatedAt?: string;
+};
+
 export type FinancialPeriod = {
   id: string;
   companyId: string;

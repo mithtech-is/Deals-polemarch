@@ -9,6 +9,7 @@ import { useUser } from "@/context/UserContext";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { medusaClient } from "@/lib/medusa";
+import { formatPrice } from "@/lib/format";
 
 interface CheckoutUser {
     email: string;
@@ -108,7 +109,7 @@ Email: ${customer.email}
 
 Company: ${firstItem.title || "Unlisted Shares"}
 Quantity: ${firstItem.quantity || 0}
-Investment Amount: Rs. ${order.total?.toLocaleString("en-IN")}
+Investment Amount: Rs. ${formatPrice(order.total ?? 0)}
 
 Please guide me on the next steps to complete this transaction.`);
 
@@ -145,7 +146,7 @@ Please guide me on the next steps to complete this transaction.`);
                                 </div>
                                 <div className="flex justify-between items-center py-3">
                                     <span className="text-slate-500 font-medium">Total Investment</span>
-                                    <span className="text-xl font-bold text-primary">Rs. {order.total?.toLocaleString("en-IN")}</span>
+                                    <span className="text-xl font-bold text-primary">Rs. {formatPrice(order.total ?? 0)}</span>
                                 </div>
                             </div>
                         </div>
@@ -223,7 +224,7 @@ Please guide me on the next steps to complete this transaction.`);
                                     <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-10 border-t border-white/10">
                                         <div>
                                             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Transfer Exactly</p>
-                                            <p className="text-4xl font-bold text-white">Rs. {totalPayable.toLocaleString()}</p>
+                                            <p className="text-4xl font-bold text-white">Rs. {formatPrice(totalPayable)}</p>
                                         </div>
 
                                         <button
@@ -273,7 +274,7 @@ Please guide me on the next steps to complete this transaction.`);
                                                 <p className="font-bold text-sm text-slate-900 leading-tight mb-1">{item.name}</p>
                                                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{item.quantity} Shares</p>
                                             </div>
-                                            <p className="font-bold text-slate-900 text-sm">Rs. {(item.price * item.quantity).toLocaleString()}</p>
+                                            <p className="font-bold text-slate-900 text-sm">Rs. {formatPrice(item.price * item.quantity)}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -281,11 +282,11 @@ Please guide me on the next steps to complete this transaction.`);
                                 <div className="pt-6 border-t border-slate-100 space-y-4">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-500">Subtotal</span>
-                                        <span className="font-bold">Rs. {totalAmount.toLocaleString("en-IN")}</span>
+                                        <span className="font-bold">Rs. {formatPrice(totalAmount)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-500">Processing Fee (2%)</span>
-                                        <span className="font-bold">Rs. {totalProcessingFee.toLocaleString("en-IN")}</span>
+                                        <span className="font-bold">Rs. {formatPrice(totalProcessingFee)}</span>
                                     </div>
                                     {totalLowQtyFee > 0 && (
                                         <div className="flex justify-between text-sm">
@@ -293,12 +294,12 @@ Please guide me on the next steps to complete this transaction.`);
                                                 Low Quantity Fee
                                                 <span className="block text-[10px] text-amber-600 font-normal">Per ISIN below Rs. 10,000</span>
                                             </span>
-                                            <span className="font-bold text-amber-700">Rs. {totalLowQtyFee.toLocaleString("en-IN")}</span>
+                                            <span className="font-bold text-amber-700">Rs. {formatPrice(totalLowQtyFee)}</span>
                                         </div>
                                     )}
                                     <div className="pt-6 border-t border-slate-200 flex justify-between items-end">
                                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Payable</span>
-                                        <span className="text-2xl font-bold text-primary">Rs. {totalPayable.toLocaleString("en-IN")}</span>
+                                        <span className="text-2xl font-bold text-primary">Rs. {formatPrice(totalPayable)}</span>
                                     </div>
                                 </div>
                             </div>

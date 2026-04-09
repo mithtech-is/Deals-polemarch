@@ -109,6 +109,9 @@ export type EditorialSnapshot = {
     pros: string;
     cons: string;
   } | null;
+  faq: {
+    items: Array<{ question: string; answer: string }>;
+  } | null;
 };
 
 /** What /store/calcula/isin/:isin/snapshot returns. */

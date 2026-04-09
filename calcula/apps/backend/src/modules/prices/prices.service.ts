@@ -26,6 +26,18 @@ function serialize(row: PriceRow) {
   };
 }
 
+/**
+ * Round any incoming price to 2 decimal places. The Decimal column can
+ * physically store 4 dp, but product policy is 2 dp everywhere — we round
+ * here at the service boundary so every code path (admin form, CSV import,
+ * future API clients) gets the same treatment.
+ */
+function round2(value: number | string): number {
+  const n = typeof value === 'string' ? Number(value) : value;
+  if (!Number.isFinite(n)) return n as number;
+  return Math.round(n * 100) / 100;
+}
+
 @Injectable()
 export class PricesService {
   constructor(
@@ -63,12 +75,13 @@ export class PricesService {
 
   async upsertOne(companyId: string, input: UpsertCompanyPriceInput) {
     const datetime = new Date(input.datetime);
+    const price = round2(input.price);
     const row = await this.prisma.companyPriceHistory.upsert({
       where: {
         companyId_datetime: { companyId, datetime }
       },
       update: {
-        price: input.price,
+        price,
         note: input.note ?? null,
         link: input.link ?? null,
         category: input.category ?? null
@@ -76,7 +89,7 @@ export class PricesService {
       create: {
         companyId,
         datetime,
-        price: input.price,
+        price,
         note: input.note ?? null,
         link: input.link ?? null,
         category: input.category ?? null
@@ -91,10 +104,11 @@ export class PricesService {
     const results = await this.prisma.$transaction(
       entries.map((entry) => {
         const datetime = new Date(entry.datetime);
+        const price = round2(entry.price);
         return this.prisma.companyPriceHistory.upsert({
           where: { companyId_datetime: { companyId, datetime } },
           update: {
-            price: entry.price,
+            price,
             note: entry.note ?? null,
             link: entry.link ?? null,
             category: entry.category ?? null
@@ -102,7 +116,7 @@ export class PricesService {
           create: {
             companyId,
             datetime,
-            price: entry.price,
+            price,
             note: entry.note ?? null,
             link: entry.link ?? null,
             category: entry.category ?? null
@@ -112,6 +126,65 @@ export class PricesService {
     );
     await this.bumpPriceVersion(companyId);
     return results.map(serialize);
+  }
+
+  /**
+   * Returns the price row whose datetime is closest to `target` for the
+   * given company, or null if the company has no price rows. If an exact
+   * match exists it wins (ties prefer the earlier row). Used by the news
+   * events → price-history "push" action to back-fill event metadata onto
+   * the chart even when the event date does not line up with a scraped
+   * trading day.
+   */
+  async findNearestByDatetime(
+    companyId: string,
+    target: Date
+  ): Promise<(PriceRow & { matchedExact: boolean }) | null> {
+    // Prisma doesn't give us `ORDER BY ABS(...)` directly so we run two
+    // cheap point lookups (the first price at-or-before, the first
+    // at-or-after) and pick the closer one. Each lookup is backed by the
+    // (company_id, datetime DESC) index, so this is O(log N).
+    const [before, after] = await Promise.all([
+      this.prisma.companyPriceHistory.findFirst({
+        where: { companyId, datetime: { lte: target } },
+        orderBy: { datetime: 'desc' }
+      }),
+      this.prisma.companyPriceHistory.findFirst({
+        where: { companyId, datetime: { gt: target } },
+        orderBy: { datetime: 'asc' }
+      })
+    ]);
+    if (!before && !after) return null;
+    let winner = before ?? after!;
+    if (before && after) {
+      const db = Math.abs(before.datetime.getTime() - target.getTime());
+      const da = Math.abs(after.datetime.getTime() - target.getTime());
+      winner = db <= da ? before : after;
+    }
+    const matchedExact = winner.datetime.getTime() === target.getTime();
+    return { ...(winner as unknown as PriceRow), matchedExact };
+  }
+
+  /**
+   * Patch an existing price row with note/link/category values pushed from
+   * a news event. Price is intentionally left untouched. Bumps version.
+   */
+  async attachEventMetadata(
+    id: bigint,
+    patch: { note?: string | null; link?: string | null; category?: string | null }
+  ) {
+    const existing = await this.prisma.companyPriceHistory.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Price entry not found');
+    const row = await this.prisma.companyPriceHistory.update({
+      where: { id },
+      data: {
+        note: patch.note !== undefined ? patch.note : existing.note,
+        link: patch.link !== undefined ? patch.link : existing.link,
+        category: patch.category !== undefined ? patch.category : existing.category
+      }
+    });
+    await this.bumpPriceVersion(existing.companyId);
+    return serialize(row);
   }
 
   async deleteOne(id: string) {

@@ -117,6 +117,9 @@ export type EditorialSnapshot = {
     pros: string;
     cons: string;
   } | null;
+  faq: {
+    items: Array<{ question: string; answer: string }>;
+  } | null;
 };
 
 // ── In-memory cache ────────────────────────────────────────────
@@ -400,10 +403,24 @@ export class SnapshotsService {
     const company = await this.prisma.company.findUnique({ where: { isin } });
     if (!company) throw new NotFoundException('Company not found');
 
-    const [overview, prosCons] = await Promise.all([
+    const [overview, prosCons, faq] = await Promise.all([
       this.prisma.companyOverview.findUnique({ where: { companyId: company.id } }),
-      this.prisma.prosCons.findUnique({ where: { companyId: company.id } })
+      this.prisma.prosCons.findUnique({ where: { companyId: company.id } }),
+      this.prisma.companyFaq.findUnique({ where: { companyId: company.id } })
     ]);
+
+    const normalizeFaqItems = (raw: unknown): Array<{ question: string; answer: string }> => {
+      if (!Array.isArray(raw)) return [];
+      return raw
+        .filter((r): r is Record<string, unknown> => typeof r === 'object' && r !== null)
+        .map((r) => ({
+          question: typeof r.question === 'string' ? r.question : '',
+          answer: typeof r.answer === 'string' ? r.answer : ''
+        }))
+        .filter((r) => r.question.trim() && r.answer.trim());
+    };
+
+    const faqItems = faq ? normalizeFaqItems(faq.items) : [];
 
     const snapshot: EditorialSnapshot = {
       isin: company.isin,
@@ -419,7 +436,8 @@ export class SnapshotsService {
         : null,
       prosCons: prosCons
         ? { pros: prosCons.pros, cons: prosCons.cons }
-        : null
+        : null,
+      faq: faqItems.length ? { items: faqItems } : null
     };
 
     this.editorialCache.set(isin, { expiresAt: Date.now() + CACHE_TTL_MS, payload: snapshot });

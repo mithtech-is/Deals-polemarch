@@ -1,5 +1,6 @@
 import { Field, InputType, ObjectType } from '@nestjs/graphql';
-import { IsOptional, IsString } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
 @ObjectType()
 export class CompanyOverviewModel {
@@ -76,4 +77,50 @@ export class UpsertProsConsInput {
   @Field()
   @IsString()
   cons!: string;
+}
+
+@ObjectType()
+export class FaqItemModel {
+  @Field()
+  question!: string;
+
+  @Field()
+  answer!: string;
+}
+
+@ObjectType()
+export class CompanyFaqModel {
+  @Field()
+  companyId!: string;
+
+  @Field(() => [FaqItemModel])
+  items!: FaqItemModel[];
+
+  @Field()
+  updatedAt!: string;
+}
+
+@InputType()
+export class FaqItemInput {
+  @Field()
+  @IsString()
+  question!: string;
+
+  @Field()
+  @IsString()
+  answer!: string;
+}
+
+@InputType()
+export class UpsertCompanyFaqInput {
+  @Field()
+  @IsString()
+  companyId!: string;
+
+  @Field(() => [FaqItemInput])
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => FaqItemInput)
+  items!: FaqItemInput[];
 }

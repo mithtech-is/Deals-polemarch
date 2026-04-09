@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, TrendingUp } from "lucide-react";
+import { formatPrice } from "@/lib/format";
 
 interface DealCardProps {
     id: string;
@@ -52,7 +53,7 @@ const DealCard = ({ id, handle, name, logo, sector, price, quantity, summary, is
                 <div className="mb-8 border-t border-slate-50 pt-6">
                     <div>
                         <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-foreground/40">Deal Price</p>
-                        <p className="text-2xl font-bold text-foreground">Rs. {price.toLocaleString("en-IN")}</p>
+                        <p className="text-2xl font-bold text-foreground">Rs. {formatPrice(price)}</p>
                     </div>
                 </div>
 

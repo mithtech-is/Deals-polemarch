@@ -6,6 +6,7 @@ import { useCart } from "@/context/CartContext";
 import { Trash2, ArrowRight, CreditCard, ShieldCheck, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { formatPrice } from "@/lib/format";
 
 export default function CartPage() {
     const { items, removeItem, updateItem, totalAmount, totalItems, totalProcessingFee, totalLowQtyFee, totalPayable } = useCart();
@@ -84,16 +85,16 @@ export default function CartPage() {
                                                             +
                                                         </button>
                                                     </div>
-                                                    <span className="text-xs text-slate-400 font-medium whitespace-nowrap">@ ₹{item.price.toLocaleString()}</span>
+                                                    <span className="text-xs text-slate-400 font-medium whitespace-nowrap">@ ₹{formatPrice(item.price)}</span>
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-8">
                                             <div className="text-right">
                                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Total</p>
-                                                <p className="font-bold text-slate-900">₹{(item.price * item.quantity).toLocaleString("en-IN")}</p>
+                                                <p className="font-bold text-slate-900">₹{formatPrice(item.price * item.quantity)}</p>
                                                 <p className="text-[10px] text-slate-500 mt-1">
-                                                    + ₹{item.processingFee.toLocaleString("en-IN")} fee
+                                                    + ₹{formatPrice(item.processingFee)} fee
                                                     {item.lowQtyFee > 0 && (
                                                         <span className="text-amber-700"> + ₹{item.lowQtyFee} low-qty</span>
                                                     )}
@@ -127,11 +128,11 @@ export default function CartPage() {
                                         </div>
                                         <div className="flex justify-between items-center text-sm">
                                             <span className="text-slate-400">Subtotal</span>
-                                            <span className="font-bold">₹{totalAmount.toLocaleString("en-IN")}</span>
+                                            <span className="font-bold">₹{formatPrice(totalAmount)}</span>
                                         </div>
                                         <div className="flex justify-between items-center text-sm">
                                             <span className="text-slate-400">Processing Fee (2%)</span>
-                                            <span className="font-bold">₹{totalProcessingFee.toLocaleString("en-IN")}</span>
+                                            <span className="font-bold">₹{formatPrice(totalProcessingFee)}</span>
                                         </div>
                                         {totalLowQtyFee > 0 && (
                                             <div className="flex justify-between items-center text-sm">
@@ -139,7 +140,7 @@ export default function CartPage() {
                                                     Low Quantity Fee
                                                     <span className="block text-[10px] text-amber-500/80 font-normal">Per ISIN below ₹10,000</span>
                                                 </span>
-                                                <span className="font-bold text-amber-400">₹{totalLowQtyFee.toLocaleString("en-IN")}</span>
+                                                <span className="font-bold text-amber-400">₹{formatPrice(totalLowQtyFee)}</span>
                                             </div>
                                         )}
                                     </div>
@@ -147,7 +148,7 @@ export default function CartPage() {
                                     <div className="pt-8 border-t border-white/10 mb-8">
                                         <div className="flex justify-between items-end">
                                             <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Total Payable</span>
-                                            <span className="text-3xl font-bold text-primary">₹{totalPayable.toLocaleString("en-IN")}</span>
+                                            <span className="text-3xl font-bold text-primary">₹{formatPrice(totalPayable)}</span>
                                         </div>
                                     </div>
 

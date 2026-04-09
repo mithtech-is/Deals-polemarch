@@ -22,6 +22,9 @@ import { FinancialStatements } from "@/components/product/FinancialStatements";
 import { ProsConsPanel } from "@/components/product/ProsConsPanel";
 import { CompanyOverviewPanel } from "@/components/product/CompanyOverviewPanel";
 import { EventTimeline } from "@/components/product/EventTimeline";
+import { FaqPanel } from "@/components/product/FaqPanel";
+import { DealPageToc } from "@/components/product/DealPageToc";
+import { formatPrice, formatPriceForSchema } from "@/lib/format";
 
 export default function DealDetailPage() {
     const params = useParams();
@@ -114,7 +117,7 @@ export default function DealDetailPage() {
             <div className="flex justify-between items-start mb-6">
                 <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Price per share</p>
-                    <p className="text-3xl font-bold text-slate-900">Rs. {deal.price.toLocaleString()}</p>
+                    <p className="text-3xl font-bold text-slate-900">Rs. {formatPrice(deal.price)}</p>
                 </div>
                 <span className="px-2 py-1 rounded-md bg-red-50 text-red-700 text-[9px] font-bold uppercase tracking-wider">
                     High Demand
@@ -175,11 +178,11 @@ export default function DealDetailPage() {
                         <div className="space-y-3 mb-8">
                             <div className="flex justify-between">
                                 <span className="text-sm text-slate-500">Investment Value</span>
-                                <span className="text-sm font-bold">Rs. {investment.toLocaleString("en-IN")}</span>
+                                <span className="text-sm font-bold">Rs. {formatPrice(investment)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-sm text-slate-500">Processing Fee (2%)</span>
-                                <span className="text-sm font-bold">Rs. {processingFee.toLocaleString("en-IN")}</span>
+                                <span className="text-sm font-bold">Rs. {formatPrice(processingFee)}</span>
                             </div>
                             {lowQtyFee > 0 && (
                                 <div className="flex justify-between">
@@ -187,13 +190,13 @@ export default function DealDetailPage() {
                                         Low Quantity Fee
                                         <span className="block text-[10px] text-amber-600 font-normal">Order below Rs. 10,000</span>
                                     </span>
-                                    <span className="text-sm font-bold text-amber-700">Rs. {lowQtyFee.toLocaleString("en-IN")}</span>
+                                    <span className="text-sm font-bold text-amber-700">Rs. {formatPrice(lowQtyFee)}</span>
                                 </div>
                             )}
 
                             <div className="flex justify-between pt-3 border-t border-slate-100">
                                 <span className="text-base font-bold text-slate-900">Total Payable</span>
-                                <span className="text-lg font-bold text-slate-900">Rs. {total.toLocaleString("en-IN")}</span>
+                                <span className="text-lg font-bold text-slate-900">Rs. {formatPrice(total)}</span>
                             </div>
                         </div>
                     </>
@@ -236,13 +239,54 @@ export default function DealDetailPage() {
                         Back to Marketplace
                     </Link>
 
+                    {/* Product + BreadcrumbList JSON-LD for SEO/GEO */}
+                    <script
+                        type="application/ld+json"
+                        dangerouslySetInnerHTML={{
+                            __html: JSON.stringify({
+                                "@context": "https://schema.org",
+                                "@type": "Product",
+                                name: `${deal.name} Unlisted Shares`,
+                                image: deal.logo || undefined,
+                                description:
+                                    deal.description ||
+                                    `Buy ${deal.name} unlisted shares on Polemarch. Verified pricing, KYC-ready, transparent transfers.`,
+                                sku: deal.isin || undefined,
+                                brand: { "@type": "Brand", name: deal.name },
+                                offers: deal.price
+                                    ? {
+                                          "@type": "Offer",
+                                          priceCurrency: "INR",
+                                          price: formatPriceForSchema(deal.price),
+                                          availability: "https://schema.org/InStock",
+                                          url: typeof window !== "undefined" ? window.location.href : undefined,
+                                      }
+                                    : undefined,
+                            }),
+                        }}
+                    />
+                    <script
+                        type="application/ld+json"
+                        dangerouslySetInnerHTML={{
+                            __html: JSON.stringify({
+                                "@context": "https://schema.org",
+                                "@type": "BreadcrumbList",
+                                itemListElement: [
+                                    { "@type": "ListItem", position: 1, name: "Home", item: "https://deals.polemarch.in/" },
+                                    { "@type": "ListItem", position: 2, name: "Marketplace", item: "https://deals.polemarch.in/deals" },
+                                    { "@type": "ListItem", position: 3, name: deal.name },
+                                ],
+                            }),
+                        }}
+                    />
+
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="lg:col-span-2 space-y-8">
-                            <div className="flex items-center gap-6">
+                        <div className="lg:col-span-2">
+                            <div className="flex items-center gap-6 mb-8">
                                 <div className="h-20 w-20 rounded-xl bg-slate-900 flex items-center justify-center overflow-hidden">
                                     <img
                                         src={deal.logo || "/assets/logos/placeholder.png"}
-                                        alt={deal.name}
+                                        alt={`${deal.name} logo`}
                                         width={80}
                                         height={80}
                                         className="object-contain"
@@ -254,13 +298,27 @@ export default function DealDetailPage() {
                                 </div>
                             </div>
 
-                            <div className="block lg:hidden">
+                            <div className="block lg:hidden mb-8">
                                 {renderBuyBox()}
                             </div>
 
-                            {deal.isin && <PriceChart isin={deal.isin} />}
+                            <div className="lg:grid lg:grid-cols-[180px_1fr] lg:gap-8">
+                                <DealPageToc />
+                                <div className="space-y-8 min-w-0">
 
-                            <div className="pt-6">
+                            {deal.isin && (
+                                <section id="price">
+                                    <PriceChart isin={deal.isin} />
+                                </section>
+                            )}
+
+                            {deal.isin && (
+                                <section id="about">
+                                    <CompanyOverviewPanel isin={deal.isin} />
+                                </section>
+                            )}
+
+                            <div id="company-details" className="pt-6">
                                 <div className="flex items-center gap-3 mb-6">
                                     <div className="h-6 w-1 bg-emerald-700 rounded-full"></div>
                                     <h3 className="text-xl font-bold">Company Details</h3>
@@ -318,7 +376,7 @@ export default function DealDetailPage() {
                                 </div>
                             </div>
 
-                            <div className="pt-6">
+                            <div id="financials" className="pt-6">
                                 <div className="flex items-center gap-3 mb-6">
                                     <div className="h-6 w-1 bg-emerald-700 rounded-full"></div>
                                     <h3 className="text-xl font-bold">Financials</h3>
@@ -377,30 +435,25 @@ export default function DealDetailPage() {
                                 )}
                             </div>
 
+                            {deal.isin && <FinancialStatements isin={deal.isin} />}
                             {deal.isin && (
-                                <div className="pt-6">
-                                    <FinancialStatements isin={deal.isin} />
-                                </div>
-                            )}
-
-                            {deal.isin && (
-                                <div className="pt-6">
-                                    <CompanyOverviewPanel isin={deal.isin} />
-                                </div>
-                            )}
-
-                            {deal.isin && (
-                                <div className="pt-6">
+                                <section id="key-takeaways">
                                     <ProsConsPanel isin={deal.isin} />
-                                </div>
+                                </section>
                             )}
-
                             {deal.isin && (
-                                <div className="pt-6">
+                                <section id="timeline">
                                     <EventTimeline isin={deal.isin} />
-                                </div>
+                                </section>
+                            )}
+                            {deal.isin && (
+                                <section id="faq">
+                                    <FaqPanel isin={deal.isin} />
+                                </section>
                             )}
 
+                                </div>
+                            </div>
                         </div>
 
                         <div className="hidden lg:block lg:sticky lg:top-8 h-fit lg:col-span-1">

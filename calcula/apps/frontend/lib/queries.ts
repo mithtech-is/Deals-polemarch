@@ -337,6 +337,42 @@ export const DELETE_NEWS_EVENT_MUTATION = `
   }
 `;
 
+export const UPSERT_NEWS_EVENT_BULK_MUTATION = `
+  mutation UpsertNewsEventBulk($input: UpsertNewsEventBulkInput!) {
+    upsertNewsEventBulk(input: $input) {
+      id
+      companyId
+      occurredAt
+      category
+      title
+      body
+      sourceUrl
+    }
+  }
+`;
+
+export const PUSH_NEWS_EVENT_TO_PRICES_MUTATION = `
+  mutation PushNewsEventToPriceHistory($eventId: ID!) {
+    pushNewsEventToPriceHistory(eventId: $eventId) {
+      priceHistoryId
+      datetime
+      matchedExact
+    }
+  }
+`;
+
+export const PUSH_NEWS_EVENTS_TO_PRICES_BULK_MUTATION = `
+  mutation PushNewsEventsToPriceHistoryBulk($eventIds: [ID!]!) {
+    pushNewsEventsToPriceHistoryBulk(eventIds: $eventIds) {
+      pushed
+      skipped {
+        eventId
+        reason
+      }
+    }
+  }
+`;
+
 // ── Editorial: CompanyOverview + ProsCons (Phase 4/5) ─────────
 
 export const COMPANY_NARRATIVE_QUERY = `
@@ -381,6 +417,45 @@ export const UPSERT_PROS_CONS_MUTATION = `
       companyId
       pros
       cons
+    }
+  }
+`;
+
+export const COMPANY_FAQ_QUERY = `
+  query CompanyFaq($companyId: String!) {
+    companyFaq(companyId: $companyId) {
+      companyId
+      items {
+        question
+        answer
+      }
+      updatedAt
+    }
+  }
+`;
+
+export const UPSERT_COMPANY_FAQ_MUTATION = `
+  mutation UpsertCompanyFaq($input: UpsertCompanyFaqInput!) {
+    upsertCompanyFaq(input: $input) {
+      companyId
+      items {
+        question
+        answer
+      }
+      updatedAt
+    }
+  }
+`;
+
+export const SEED_DEFAULT_FAQ_MUTATION = `
+  mutation SeedDefaultFaq($companyId: ID!) {
+    seedDefaultFaq(companyId: $companyId) {
+      companyId
+      items {
+        question
+        answer
+      }
+      updatedAt
     }
   }
 `;

@@ -10,7 +10,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
-    "mark-required": "tsx prisma/mark-required.ts"
+    "mark-required": "tsx prisma/mark-required.ts",
+    "seed:default-faqs": "tsx prisma/seed-default-faqs.ts",
+    "seed:api-prices": "tsx prisma/seed-api-prices.ts"
   },
   "dependencies": {
     "@as-integrations/express5": "^1.1.2",

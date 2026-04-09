@@ -1,11 +1,13 @@
 import { UseGuards } from '@nestjs/common';
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { PlatformRole } from '@prisma/client';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import {
+  CompanyFaqModel,
   CompanyOverviewModel,
   ProsConsModel,
+  UpsertCompanyFaqInput,
   UpsertCompanyOverviewInput,
   UpsertProsConsInput
 } from './dto/editorial.dto';
@@ -40,5 +42,24 @@ export class EditorialResolver {
   @Mutation(() => ProsConsModel)
   upsertProsCons(@Args('input') input: UpsertProsConsInput) {
     return this.editorialService.upsertProsCons(input);
+  }
+
+  @Query(() => CompanyFaqModel, { nullable: true })
+  companyFaq(@Args('companyId') companyId: string) {
+    return this.editorialService.getFaq(companyId);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(PlatformRole.ADMIN)
+  @Mutation(() => CompanyFaqModel)
+  upsertCompanyFaq(@Args('input') input: UpsertCompanyFaqInput) {
+    return this.editorialService.upsertFaq(input);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(PlatformRole.ADMIN)
+  @Mutation(() => CompanyFaqModel)
+  seedDefaultFaq(@Args('companyId', { type: () => ID }) companyId: string) {
+    return this.editorialService.seedDefaultFaq(companyId);
   }
 }
