@@ -154,7 +154,8 @@ export default function AdminTaxonomyPage() {
         orderCode: node.orderCode,
         required: node.isRequired ? 'yes' : 'no',
         calculated: node.isCalculated ? 'yes' : 'no',
-        formula: node.formula ?? '-'
+        formula: node.formula ?? '-',
+        __isRequired: node.isRequired
       })),
     [allNodes, byId]
   );
@@ -392,6 +393,9 @@ export default function AdminTaxonomyPage() {
               const id = String(record.id ?? '');
               setSelectedLineItemId(id || null);
             }}
+            cellStyle={({ record }) =>
+              record.__isRequired ? { color: '#dc2626', fontWeight: 600 } : undefined
+            }
           />
           {selectedLineItem && (
             <p className="muted page-subtitle">

@@ -8,6 +8,7 @@ import { formatReadOnlyFinancialValue } from '@/lib/financial-number';
 import {
   COMPANY_MULTI_PERIOD_FINANCIALS_QUERY,
   COMPANY_QUERY,
+  LINE_ITEMS_QUERY,
   PERIODS_QUERY,
   TRENDS_QUERY
 } from '@/lib/queries';
@@ -24,7 +25,7 @@ const VisTableShell = dynamic(
   () => import('@/components/vis/vis-table-shell').then((m) => ({ default: m.VisTableShell })),
   { ssr: false, loading: () => <div style={{ height: 420 }} /> }
 );
-import type { Company, FinancialPeriod, FinancialValue } from '@/types/domain';
+import type { Company, FinancialLineItem, FinancialPeriod, FinancialValue } from '@/types/domain';
 
 type StatementType = 'balance_sheet' | 'pnl' | 'cashflow' | 'derived';
 type DashboardTab = 'balance_sheet' | 'pnl' | 'cashflow' | 'valuation' | 'core25';
@@ -94,6 +95,7 @@ export default function CompanyPage() {
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('pnl');
   const [trends, setTrends] = useState<Array<{ periodLabel: string; revenue?: number | null; netProfit?: number | null; networth?: number | null }>>([]);
   const [financials, setFinancials] = useState<FinancialValue[]>([]);
+  const [requiredByLineItemId, setRequiredByLineItemId] = useState<Map<string, boolean>>(new Map());
   const [error, setError] = useState<string | null>(null);
 
   const activeStatementType: StatementType = useMemo(() => {
@@ -144,6 +146,26 @@ export default function CompanyPage() {
     };
     void load();
   }, [companyId, selectedPeriodIds, activeStatementType, token]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await gql<{ financialLineItems: FinancialLineItem[] }>(
+          LINE_ITEMS_QUERY,
+          { statementType: activeStatementType },
+          token
+        );
+        const next = new Map<string, boolean>();
+        for (const li of res.financialLineItems ?? []) {
+          next.set(li.id, li.isRequired);
+        }
+        setRequiredByLineItemId(next);
+      } catch {
+        setRequiredByLineItemId(new Map());
+      }
+    };
+    void load();
+  }, [activeStatementType, token]);
 
   const periodById = useMemo(() => new Map(periods.map((period) => [period.id, period])), [periods]);
   const sortedPeriods = useMemo(() => sortPeriodsDesc(periods), [periods]);
@@ -200,9 +222,10 @@ export default function CompanyPage() {
     ];
     const records = financialRows.map((row) => {
       const depth = Math.max(Math.floor(row.orderCode.length / 2) - 1, 0);
-      const rec: Record<string, string | number | null> = {
+      const rec: Record<string, unknown> = {
         code: row.lineItemCode,
-        lineItem: `${'-- '.repeat(depth)}${row.lineItemName}`
+        lineItem: `${'-- '.repeat(depth)}${row.lineItemName}`,
+        __isRequired: requiredByLineItemId.get(row.lineItemId) ?? false
       };
       for (const period of selectedPeriods) {
         rec[period.id] = formatReadOnlyFinancialValue(row.valuesByPeriod.get(period.id)?.value);
@@ -210,7 +233,7 @@ export default function CompanyPage() {
       return rec;
     });
     return { columns, records };
-  }, [financialRows, selectedPeriods]);
+  }, [financialRows, selectedPeriods, requiredByLineItemId]);
 
   const metricsTable = useMemo(() => {
     const codes = dashboardTab === 'valuation' ? VALUATION_CODES : CORE_25_CODES;
@@ -367,7 +390,16 @@ export default function CompanyPage() {
         <DashboardSection title={titleFromTab(dashboardTab)}>
           {(dashboardTab === 'balance_sheet' || dashboardTab === 'pnl' || dashboardTab === 'cashflow') && (
             <>
-              <VisTableShell columns={statementTable.columns} records={statementTable.records} height={520} />
+              <VisTableShell
+                columns={statementTable.columns}
+                records={statementTable.records}
+                height={520}
+                cellStyle={({ field, record }) =>
+                  field === 'lineItem' && record.__isRequired
+                    ? { color: '#dc2626', fontWeight: 600 }
+                    : undefined
+                }
+              />
               <div className="grid grid-2">
                 <div className="card">
                   <h3 className="page-title">Trend Lines</h3>

@@ -19,7 +19,6 @@ import {
 } from "@/lib/calcula";
 import { PriceChart } from "@/components/product/PriceChart";
 import { FinancialStatements } from "@/components/product/FinancialStatements";
-import { NewsPanel } from "@/components/product/NewsPanel";
 import { ProsConsPanel } from "@/components/product/ProsConsPanel";
 import { CompanyOverviewPanel } from "@/components/product/CompanyOverviewPanel";
 import { EventTimeline } from "@/components/product/EventTimeline";
@@ -393,12 +392,6 @@ export default function DealDetailPage() {
                             {deal.isin && (
                                 <div className="pt-6">
                                     <ProsConsPanel isin={deal.isin} />
-                                </div>
-                            )}
-
-                            {deal.isin && (
-                                <div className="pt-6">
-                                    <NewsPanel isin={deal.isin} />
                                 </div>
                             )}
 

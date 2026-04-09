@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { gql } from '@/lib/api';
 import { useAuth } from '@/components/auth-context';
+import { Modal } from '@/components/ui/modal';
 import { formatReadOnlyFinancialValue, parseFinancialInput } from '@/lib/financial-number';
 import {
   COMPANY_MULTI_PERIOD_FINANCIALS_QUERY,
@@ -106,6 +107,7 @@ export function PeriodFinancialEditor({ companyId, periods }: Props) {
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [activeCellKey, setActiveCellKey] = useState<string | null>(null);
+  const [formulaModal, setFormulaModal] = useState<{ name: string; formula: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -770,8 +772,6 @@ export function PeriodFinancialEditor({ companyId, periods }: Props) {
           <thead>
             <tr>
               <th className="sticky-col">Line Item</th>
-              <th className="sticky-col-2">Code</th>
-              <th className="sticky-col-3">Formula</th>
               {selectedPeriods.map((period) => (
                 <th key={period.id}>{periodLabel(period)}</th>
               ))}
@@ -779,12 +779,46 @@ export function PeriodFinancialEditor({ companyId, periods }: Props) {
           </thead>
           <tbody>
             {flatItems.map((item) => (
-              <tr key={item.id}>
-                <td className="sticky-col" style={{ paddingLeft: `${8 + item.depth * 16}px` }}>
-                  {item.name}
+              <tr
+                key={item.id}
+                style={item.isRequired ? { color: '#dc2626', fontWeight: 600 } : undefined}
+              >
+                <td
+                  className="sticky-col"
+                  style={{
+                    paddingLeft: `${8 + item.depth * 16}px`,
+                    ...(item.isRequired ? { color: '#dc2626', fontWeight: 600 } : {})
+                  }}
+                >
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {item.name}
+                    {item.formula ? (
+                      <button
+                        type="button"
+                        title="Show formula"
+                        aria-label={`Show formula for ${item.name}`}
+                        onClick={() =>
+                          setFormulaModal({ name: item.name, formula: item.formula ?? '' })
+                        }
+                        style={{
+                          border: '1px solid currentColor',
+                          background: 'transparent',
+                          color: 'inherit',
+                          borderRadius: '50%',
+                          width: 18,
+                          height: 18,
+                          lineHeight: '16px',
+                          padding: 0,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        i
+                      </button>
+                    ) : null}
+                  </span>
                 </td>
-                <td className="sticky-col-2">{item.code}</td>
-                <td className="sticky-col-3">{item.formula ?? '-'}</td>
                 {selectedPeriods.map((period) => {
                   const persisted = persistedByKey.get(`${period.id}:${item.id}`);
                   const live = livePreviewByPeriod.get(period.id);
@@ -860,6 +894,21 @@ export function PeriodFinancialEditor({ companyId, periods }: Props) {
 
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
+
+      <Modal
+        isOpen={formulaModal !== null}
+        onClose={() => setFormulaModal(null)}
+        title={formulaModal ? `Formula – ${formulaModal.name}` : 'Formula'}
+      >
+        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
+          {formulaModal?.formula ?? ''}
+        </pre>
+        <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+          <button className="secondary" onClick={() => setFormulaModal(null)}>
+            Close
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

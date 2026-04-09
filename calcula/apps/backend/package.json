@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "mark-required": "tsx prisma/mark-required.ts"
   },
   "dependencies": {
     "@as-integrations/express5": "^1.1.2",
