@@ -253,20 +253,24 @@ export class EditorialService {
   }
 
   async upsertOverview(input: UpsertCompanyOverviewInput) {
-    const data = {
-      summary: input.summary,
-      businessModel: input.businessModel ?? null,
-      competitiveMoat: input.competitiveMoat ?? null,
-      risks: input.risks ?? null,
-      financialInsights: input.financialInsights ?? null,
-      industryAnalysis: input.industryAnalysis ?? null,
-      sectorAnalysis: input.sectorAnalysis ?? null,
-      activityAnalysis: input.activityAnalysis ?? null
-    };
+    // Only include fields that were explicitly provided in the mutation input.
+    // Previously every field was unconditionally written as `value ?? null`,
+    // which meant saving Financial Insights would null out Business Model /
+    // Competitive Moat / Risks (and vice versa) if they weren't populated in
+    // the form state at save time. Now omitted fields are left untouched.
+    const data: Record<string, unknown> = { summary: input.summary };
+    if (input.businessModel !== undefined) data.businessModel = input.businessModel || null;
+    if (input.competitiveMoat !== undefined) data.competitiveMoat = input.competitiveMoat || null;
+    if (input.risks !== undefined) data.risks = input.risks || null;
+    if (input.financialInsights !== undefined) data.financialInsights = input.financialInsights || null;
+    if (input.industryAnalysis !== undefined) data.industryAnalysis = input.industryAnalysis || null;
+    if (input.sectorAnalysis !== undefined) data.sectorAnalysis = input.sectorAnalysis || null;
+    if (input.activityAnalysis !== undefined) data.activityAnalysis = input.activityAnalysis || null;
+
     const row = await this.prisma.companyOverview.upsert({
       where: { companyId: input.companyId },
       update: data,
-      create: { companyId: input.companyId, ...data }
+      create: { companyId: input.companyId, summary: input.summary, ...data }
     });
     await this.bumpEditorialForCompany(input.companyId);
     return {
