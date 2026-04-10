@@ -15,9 +15,7 @@ import { useAuth } from '@/components/auth-context';
 import { DashboardPage, DashboardSection } from '@/components/dashboard/template';
 import { RequireAuth } from '@/components/require-auth';
 import { Modal } from '@/components/ui/modal';
-import type { FinancialLineItem, FinancialRemainderMapping } from '@/types/domain';
-
-type StatementType = 'balance_sheet' | 'pnl' | 'cashflow' | 'change_in_equity' | 'ratios_valuations';
+import type { FinancialLineItem, FinancialRemainderMapping, StatementType } from '@/types/domain';
 type LineItemNode = Omit<FinancialLineItem, 'children'> & { children: LineItemNode[] };
 
 function buildTree(items: FinancialLineItem[]): LineItemNode[] {

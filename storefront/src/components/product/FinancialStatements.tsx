@@ -9,7 +9,6 @@ import {
   type StatementRow,
 } from "@/lib/snapshot";
 import { DEFAULT_HINT, formatValueWithHint, labelFor } from "@/lib/valueInFormat";
-import { useCurrency } from "@/components/CurrencyContext";
 
 type Mode = "yearly" | "quarterly";
 
@@ -71,7 +70,7 @@ type Props = {
 };
 
 export function FinancialStatements({ isin }: Props) {
-  const { symbol: userSymbol } = useCurrency();
+  const userSymbol = "₹"; // INR-only platform
   const [snapshot, setSnapshot] = useState<StatementsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

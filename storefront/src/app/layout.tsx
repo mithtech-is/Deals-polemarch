@@ -14,7 +14,6 @@ export const metadata: Metadata = {
 import { CartProvider } from "@/context/CartContext";
 import { UserProvider } from "@/context/UserContext";
 import { ToastProvider } from "@/context/ToastContext";
-import { CurrencyProvider } from "@/components/CurrencyContext";
 
 export default function RootLayout({
   children,
@@ -27,7 +26,7 @@ export default function RootLayout({
         <UserProvider>
           <ToastProvider>
             <CartProvider>
-              <CurrencyProvider>{children}</CurrencyProvider>
+              {children}
             </CartProvider>
           </ToastProvider>
         </UserProvider>

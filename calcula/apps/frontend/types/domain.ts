@@ -1,3 +1,5 @@
+export type StatementType = 'balance_sheet' | 'pnl' | 'cashflow' | 'change_in_equity' | 'ratios_valuations' | 'auxiliary_data';
+
 export type AuthToken = {
   accessToken: string;
   role: string;

@@ -16,10 +16,9 @@ import type {
   FinancialLineItem,
   FinancialPeriod,
   FinancialRemainderMapping,
-  FinancialValue
+  FinancialValue,
+  StatementType
 } from '@/types/domain';
-
-type StatementType = 'balance_sheet' | 'pnl' | 'cashflow' | 'change_in_equity' | 'ratios_valuations';
 type DraftsByPeriod = Record<string, Record<string, string>>;
 // Fields that admins can manually override on the Derived tab.
 //

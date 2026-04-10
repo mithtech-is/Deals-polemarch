@@ -7,8 +7,8 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.use(json({ limit: '5mb' }));
-  app.use(urlencoded({ extended: true, limit: '5mb' }));
+  app.use(json({ limit: '250mb' }));
+  app.use(urlencoded({ extended: true, limit: '250mb' }));
   app.use(compression());
   app.setGlobalPrefix('api');
   app.enableCors();

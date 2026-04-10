@@ -25,9 +25,7 @@ const VisTableShell = dynamic(
   () => import('@/components/vis/vis-table-shell').then((m) => ({ default: m.VisTableShell })),
   { ssr: false, loading: () => <div style={{ height: 420 }} /> }
 );
-import type { Company, FinancialLineItem, FinancialPeriod, FinancialValue } from '@/types/domain';
-
-type StatementType = 'balance_sheet' | 'pnl' | 'cashflow' | 'ratios_valuations';
+import type { Company, FinancialLineItem, FinancialPeriod, FinancialValue, StatementType } from '@/types/domain';
 type DashboardTab = 'balance_sheet' | 'pnl' | 'cashflow' | 'valuation' | 'core25';
 
 const CORE_25_CODES = [

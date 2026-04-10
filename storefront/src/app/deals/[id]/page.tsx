@@ -10,7 +10,6 @@ import { ArrowLeft, Info, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { useUser } from "@/context/UserContext";
-import { useCurrency } from "@/components/CurrencyContext";
 import {
     getCompanyFinancials,
     getOverviewValue,
@@ -42,7 +41,7 @@ export default function DealDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const { addItem } = useCart();
     const { user } = useUser();
-    const { symbol: currencySymbol } = useCurrency();
+    const currencySymbol = "₹"; // INR-only platform
 
     useEffect(() => {
         const fetchDeal = async () => {

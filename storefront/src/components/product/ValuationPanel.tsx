@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { getSnapshot, type ValuationModelEntry } from "@/lib/snapshot";
 import { Markdown } from "./Markdown";
 import { VALUATION_METHOD_LABELS } from "@/lib/valuation-method-labels";
-import { useCurrency } from "@/components/CurrencyContext";
 
 type Props = {
   isin: string;
@@ -374,7 +373,6 @@ function ValuationRangeBar({
 }
 
 export function ValuationPanel({ isin }: Props) {
-  const { currency: userCurrency } = useCurrency();
   const [valuations, setValuations] = useState<ProfileValuations | null>(null);
   const [details, setDetails] = useState<ProfileDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -446,7 +444,7 @@ export function ValuationPanel({ isin }: Props) {
   if (!valuations || valuations.models.length === 0) return null;
 
   // Precedence: valuation-set baseCurrency → live user selection → INR.
-  const currency = valuations.baseCurrency || userCurrency || "INR";
+  const currency = valuations.baseCurrency || "INR";
   const minLow = stats?.low ?? 0;
   const maxHigh = stats?.high ?? 1;
 

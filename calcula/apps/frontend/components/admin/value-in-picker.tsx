@@ -3,11 +3,12 @@
 import { gql, invalidateQueryCache } from '@/lib/api';
 import { useAuth } from '@/components/auth-context';
 
+import type { StatementType } from '@/types/domain';
+export type { StatementType };
 export type ScaleUnit = 'units' | 'thousands' | 'lakhs' | 'crores' | 'millions' | 'billions';
-export type StatementType = 'balance_sheet' | 'pnl' | 'cashflow' | 'ratios_valuations';
 
 export const ALL_SCALES: ScaleUnit[] = ['units', 'thousands', 'lakhs', 'crores', 'millions', 'billions'];
-export const COMMON_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'SGD', 'AED'];
+export const COMMON_CURRENCIES = ['INR'];
 
 export const SCALE_LABEL: Record<ScaleUnit, string> = {
   units: 'Units',

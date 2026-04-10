@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildDefaultFaqForCompany } from '../editorial/editorial.service';
 import { CreateCompanyInput, UpdateCompanyInput } from './dto/company.dto';
 
 @Injectable()
 export class CompaniesService {
+  private readonly logger = new Logger(CompaniesService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   list(q?: string) {
@@ -52,7 +54,7 @@ export class CompaniesService {
     } catch (err) {
       // Never block company creation on FAQ seeding. Log and move on;
       // admins can always click "Insert default questions" later.
-      console.error('Failed to seed default FAQs for new company', company.id, err);
+      this.logger.warn(`Failed to seed default FAQs for ${company.id}: ${(err as Error).message}`);
     }
     return company;
   }
