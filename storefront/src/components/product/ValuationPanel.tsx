@@ -488,14 +488,18 @@ export function ValuationPanel({ isin }: Props) {
             {valuations.models.length} method
             {valuations.models.length === 1 ? "" : "s"} curated by Polemarch
             analysts
-            {valuations.asOfDate
-              ? ` • as of ${new Date(valuations.asOfDate).toLocaleDateString()}`
-              : ""}
           </p>
         </div>
-        <span className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
-          {currency}
-        </span>
+        <div className="flex items-center gap-2 flex-wrap">
+          {valuations.asOfDate && (
+            <span className="px-3 py-1 rounded-full bg-amber-50 border border-amber-300 text-xs font-bold text-amber-800">
+              As on {new Date(valuations.asOfDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+            </span>
+          )}
+          <span className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
+            {currency}
+          </span>
+        </div>
       </header>
 
       {valuations.summary && (
@@ -612,6 +616,11 @@ export function ValuationPanel({ isin }: Props) {
                     {m.weight && m.weight !== 1 && (
                       <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-700">
                         weight {m.weight}
+                      </span>
+                    )}
+                    {valuations.asOfDate && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-semibold text-amber-700">
+                        as on {new Date(valuations.asOfDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                       </span>
                     )}
                   </div>

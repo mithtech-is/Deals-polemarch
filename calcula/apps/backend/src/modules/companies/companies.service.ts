@@ -85,6 +85,8 @@ export class CompaniesService {
         team: true,
         shareholders: true,
         competitors: true,
+        details: true,
+        valuations: true,
         newsEvents: { orderBy: { occurredAt: 'asc' } },
         prices: { orderBy: { datetime: 'asc' } },
         periods: {
@@ -108,16 +110,26 @@ export class CompaniesService {
         cin: company.cin,
         sector: company.sector,
         industry: company.industry,
+        activity: company.activity,
+        sectorId: company.sectorId,
+        industryId: company.industryId,
+        activityId: company.activityId,
         description: company.description,
         country: company.country,
-        listingStatus: company.listingStatus
+        listingStatus: company.listingStatus,
+        defaultCurrency: company.defaultCurrency,
+        defaultScale: company.defaultScale
       },
       overview: company.overview
         ? {
             summary: company.overview.summary,
             businessModel: company.overview.businessModel,
             competitiveMoat: company.overview.competitiveMoat,
-            risks: company.overview.risks
+            risks: company.overview.risks,
+            financialInsights: company.overview.financialInsights,
+            industryAnalysis: company.overview.industryAnalysis,
+            sectorAnalysis: company.overview.sectorAnalysis,
+            activityAnalysis: company.overview.activityAnalysis
           }
         : null,
       prosCons: company.prosCons
@@ -127,6 +139,47 @@ export class CompaniesService {
       team: company.team?.members ?? [],
       shareholders: company.shareholders?.entries ?? [],
       competitors: company.competitors?.entries ?? [],
+      details: company.details
+        ? {
+            logoUrl: company.details.logoUrl,
+            website: company.details.website,
+            linkedinUrl: company.details.linkedinUrl,
+            twitterUrl: company.details.twitterUrl,
+            crunchbaseUrl: company.details.crunchbaseUrl,
+            founded: company.details.founded,
+            incorporationCountry: company.details.incorporationCountry,
+            legalEntityType: company.details.legalEntityType,
+            registeredOffice: company.details.registeredOffice,
+            headquarters: company.details.headquarters,
+            auditor: company.details.auditor,
+            panNumber: company.details.panNumber,
+            rta: company.details.rta,
+            depository: company.details.depository,
+            employeeCount: company.details.employeeCount,
+            subsidiariesCount: company.details.subsidiariesCount,
+            fiscalYearEnd: company.details.fiscalYearEnd,
+            shareType: company.details.shareType,
+            faceValue: company.details.faceValue ? Number(company.details.faceValue) : null,
+            totalShares: company.details.totalShares,
+            lotSize: company.details.lotSize,
+            availabilityPercent: company.details.availabilityPercent ? Number(company.details.availabilityPercent) : null,
+            fiftyTwoWeekHigh: company.details.fiftyTwoWeekHigh ? Number(company.details.fiftyTwoWeekHigh) : null,
+            fiftyTwoWeekLow: company.details.fiftyTwoWeekLow ? Number(company.details.fiftyTwoWeekLow) : null,
+            lastRoundType: company.details.lastRoundType,
+            lastRoundDate: company.details.lastRoundDate,
+            lastRoundRaised: company.details.lastRoundRaised,
+            lastRoundLead: company.details.lastRoundLead,
+            lastRoundValuation: company.details.lastRoundValuation
+          }
+        : null,
+      valuations: company.valuations
+        ? {
+            baseCurrency: company.valuations.baseCurrency,
+            asOfDate: company.valuations.asOfDate?.toISOString() ?? null,
+            summary: company.valuations.summary,
+            models: company.valuations.models
+          }
+        : null,
       newsEvents: company.newsEvents.map((e) => ({
         occurredAt: e.occurredAt.toISOString(),
         category: e.category,
@@ -149,6 +202,8 @@ export class CompaniesService {
         periodStart: period.periodStart.toISOString(),
         periodEnd: period.periodEnd.toISOString(),
         isAudited: period.isAudited,
+        scale: period.scale,
+        currency: period.currency,
         values: period.values.map((v) => ({
           lineItemCode: v.lineItem.code,
           value: v.value.toString(),
@@ -174,27 +229,25 @@ export class CompaniesService {
       throw new Error('Payload missing company.isin or company.name');
     }
     const isin = c.isin as string;
+    const companyData = {
+      name: c.name as string,
+      cin: (c.cin as string) ?? null,
+      sector: (c.sector as string) ?? null,
+      industry: (c.industry as string) ?? null,
+      activity: (c.activity as string) ?? null,
+      sectorId: (c.sectorId as string) ?? null,
+      industryId: (c.industryId as string) ?? null,
+      activityId: (c.activityId as string) ?? null,
+      description: (c.description as string) ?? null,
+      country: (c.country as string) ?? 'IN',
+      listingStatus: (c.listingStatus as string) ?? 'unlisted',
+      defaultCurrency: (c.defaultCurrency as string) ?? 'INR',
+      defaultScale: (c.defaultScale as any) ?? 'crores'
+    };
     const company = await this.prisma.company.upsert({
       where: { isin },
-      update: {
-        name: c.name as string,
-        cin: (c.cin as string) ?? null,
-        sector: (c.sector as string) ?? null,
-        industry: (c.industry as string) ?? null,
-        description: (c.description as string) ?? null,
-        country: (c.country as string) ?? 'IN',
-        listingStatus: (c.listingStatus as string) ?? 'unlisted'
-      },
-      create: {
-        isin,
-        name: c.name as string,
-        cin: (c.cin as string) ?? null,
-        sector: (c.sector as string) ?? null,
-        industry: (c.industry as string) ?? null,
-        description: (c.description as string) ?? null,
-        country: (c.country as string) ?? 'IN',
-        listingStatus: (c.listingStatus as string) ?? 'unlisted'
-      }
+      update: companyData,
+      create: { isin, ...companyData }
     });
 
     const report: Record<string, number> = {};
@@ -202,21 +255,20 @@ export class CompaniesService {
     // Editorial singletons
     if (payload.overview && typeof payload.overview === 'object') {
       const o = payload.overview as Record<string, unknown>;
+      const overviewData = {
+        summary: (o.summary as string) ?? '',
+        businessModel: (o.businessModel as string) ?? null,
+        competitiveMoat: (o.competitiveMoat as string) ?? null,
+        risks: (o.risks as string) ?? null,
+        financialInsights: (o.financialInsights as string) ?? null,
+        industryAnalysis: (o.industryAnalysis as string) ?? null,
+        sectorAnalysis: (o.sectorAnalysis as string) ?? null,
+        activityAnalysis: (o.activityAnalysis as string) ?? null
+      };
       await this.prisma.companyOverview.upsert({
         where: { companyId: company.id },
-        update: {
-          summary: (o.summary as string) ?? '',
-          businessModel: (o.businessModel as string) ?? null,
-          competitiveMoat: (o.competitiveMoat as string) ?? null,
-          risks: (o.risks as string) ?? null
-        },
-        create: {
-          companyId: company.id,
-          summary: (o.summary as string) ?? '',
-          businessModel: (o.businessModel as string) ?? null,
-          competitiveMoat: (o.competitiveMoat as string) ?? null,
-          risks: (o.risks as string) ?? null
-        }
+        update: overviewData,
+        create: { companyId: company.id, ...overviewData }
       });
       report.overview = 1;
     }
@@ -275,6 +327,66 @@ export class CompaniesService {
         }
       });
       report.competitors = (payload.competitors as unknown[]).length;
+    }
+
+    // Company details (profile)
+    if (payload.details && typeof payload.details === 'object') {
+      const d = payload.details as Record<string, unknown>;
+      const toDec = (v: unknown) => (v != null && v !== '' ? String(v) : null);
+      const detailsData = {
+        logoUrl: (d.logoUrl as string) ?? null,
+        website: (d.website as string) ?? null,
+        linkedinUrl: (d.linkedinUrl as string) ?? null,
+        twitterUrl: (d.twitterUrl as string) ?? null,
+        crunchbaseUrl: (d.crunchbaseUrl as string) ?? null,
+        founded: (d.founded as string) ?? null,
+        incorporationCountry: (d.incorporationCountry as string) ?? null,
+        legalEntityType: (d.legalEntityType as string) ?? null,
+        registeredOffice: (d.registeredOffice as string) ?? null,
+        headquarters: (d.headquarters as string) ?? null,
+        auditor: (d.auditor as string) ?? null,
+        panNumber: (d.panNumber as string) ?? null,
+        rta: (d.rta as string) ?? null,
+        depository: (d.depository as string) ?? null,
+        employeeCount: typeof d.employeeCount === 'number' ? d.employeeCount : null,
+        subsidiariesCount: typeof d.subsidiariesCount === 'number' ? d.subsidiariesCount : null,
+        fiscalYearEnd: (d.fiscalYearEnd as string) ?? null,
+        shareType: (d.shareType as string) ?? null,
+        faceValue: toDec(d.faceValue),
+        totalShares: (d.totalShares as string) ?? null,
+        lotSize: typeof d.lotSize === 'number' ? d.lotSize : null,
+        availabilityPercent: toDec(d.availabilityPercent),
+        fiftyTwoWeekHigh: toDec(d.fiftyTwoWeekHigh),
+        fiftyTwoWeekLow: toDec(d.fiftyTwoWeekLow),
+        lastRoundType: (d.lastRoundType as string) ?? null,
+        lastRoundDate: (d.lastRoundDate as string) ?? null,
+        lastRoundRaised: (d.lastRoundRaised as string) ?? null,
+        lastRoundLead: (d.lastRoundLead as string) ?? null,
+        lastRoundValuation: (d.lastRoundValuation as string) ?? null
+      };
+      await this.prisma.companyDetails.upsert({
+        where: { companyId: company.id },
+        update: detailsData,
+        create: { companyId: company.id, ...detailsData }
+      });
+      report.details = 1;
+    }
+
+    // Company valuations (profile)
+    if (payload.valuations && typeof payload.valuations === 'object') {
+      const v = payload.valuations as Record<string, unknown>;
+      const valData = {
+        baseCurrency: (v.baseCurrency as string) ?? 'INR',
+        asOfDate: v.asOfDate ? new Date(v.asOfDate as string) : null,
+        summary: (v.summary as string) ?? null,
+        models: (v.models ?? []) as object
+      };
+      await this.prisma.companyValuations.upsert({
+        where: { companyId: company.id },
+        update: valData,
+        create: { companyId: company.id, ...valData }
+      });
+      report.valuations = 1;
     }
 
     // News events — idempotent by title
@@ -354,28 +466,48 @@ export class CompaniesService {
       for (const rawPeriod of payload.financialPeriods) {
         const period = rawPeriod as Record<string, unknown>;
         if (period.fiscalYear == null) continue;
-        const saved = await this.prisma.financialPeriod.upsert({
-          where: {
-            companyId_fiscalYear_fiscalQuarter: {
-              companyId: company.id,
-              fiscalYear: period.fiscalYear as number,
-              fiscalQuarter: (period.fiscalQuarter as number) ?? null
-            }
-          },
-          update: {
-            periodStart: new Date((period.periodStart as string) ?? Date.now()),
-            periodEnd: new Date((period.periodEnd as string) ?? Date.now()),
-            isAudited: Boolean(period.isAudited)
-          },
-          create: {
-            companyId: company.id,
-            fiscalYear: period.fiscalYear as number,
-            fiscalQuarter: (period.fiscalQuarter as number) ?? null,
-            periodStart: new Date((period.periodStart as string) ?? Date.now()),
-            periodEnd: new Date((period.periodEnd as string) ?? Date.now()),
-            isAudited: Boolean(period.isAudited)
+        const fiscalYear = period.fiscalYear as number;
+        const fiscalQuarter = (period.fiscalQuarter as number | null) ?? null;
+        const periodData = {
+          periodStart: new Date((period.periodStart as string) ?? Date.now()),
+          periodEnd: new Date((period.periodEnd as string) ?? Date.now()),
+          isAudited: Boolean(period.isAudited),
+          scale: (period.scale as any) ?? null,
+          currency: (period.currency as string) ?? null
+        };
+
+        // Prisma composite-unique where clauses don't accept null components,
+        // so we fall back to findFirst + update/create for annual periods
+        // (fiscalQuarter === null).
+        let saved: { id: string };
+        if (fiscalQuarter != null) {
+          saved = await this.prisma.financialPeriod.upsert({
+            where: {
+              companyId_fiscalYear_fiscalQuarter: {
+                companyId: company.id,
+                fiscalYear,
+                fiscalQuarter
+              }
+            },
+            update: periodData,
+            create: { companyId: company.id, fiscalYear, fiscalQuarter, ...periodData }
+          });
+        } else {
+          const existing = await this.prisma.financialPeriod.findFirst({
+            where: { companyId: company.id, fiscalYear, fiscalQuarter: null },
+            select: { id: true }
+          });
+          if (existing) {
+            saved = await this.prisma.financialPeriod.update({
+              where: { id: existing.id },
+              data: periodData
+            });
+          } else {
+            saved = await this.prisma.financialPeriod.create({
+              data: { companyId: company.id, fiscalYear, fiscalQuarter: null, ...periodData }
+            });
           }
-        });
+        }
         periodsCount += 1;
         if (Array.isArray(period.values)) {
           for (const rawValue of period.values) {

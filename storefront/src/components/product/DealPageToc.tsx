@@ -7,6 +7,8 @@ const SECTIONS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "about", label: "About" },
   { id: "company-details", label: "Company details" },
   { id: "financials", label: "Financials" },
+  { id: "editorial-financial", label: "Financial insights" },
+  { id: "valuations", label: "Valuations" },
   { id: "key-takeaways", label: "Key takeaways" },
   { id: "team", label: "Team" },
   { id: "shareholders", label: "Shareholders" },
