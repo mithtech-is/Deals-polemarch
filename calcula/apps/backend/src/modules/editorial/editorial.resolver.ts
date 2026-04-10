@@ -4,11 +4,17 @@ import { PlatformRole } from '@prisma/client';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import {
+  CompanyCompetitorsModel,
   CompanyFaqModel,
   CompanyOverviewModel,
+  CompanyShareholdersModel,
+  CompanyTeamModel,
   ProsConsModel,
+  UpsertCompanyCompetitorsInput,
   UpsertCompanyFaqInput,
   UpsertCompanyOverviewInput,
+  UpsertCompanyShareholdersInput,
+  UpsertCompanyTeamInput,
   UpsertProsConsInput
 } from './dto/editorial.dto';
 import { EditorialService } from './editorial.service';
@@ -61,5 +67,41 @@ export class EditorialResolver {
   @Mutation(() => CompanyFaqModel)
   seedDefaultFaq(@Args('companyId', { type: () => ID }) companyId: string) {
     return this.editorialService.seedDefaultFaq(companyId);
+  }
+
+  @Query(() => CompanyTeamModel, { nullable: true })
+  companyTeam(@Args('companyId') companyId: string) {
+    return this.editorialService.getTeam(companyId);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(PlatformRole.ADMIN)
+  @Mutation(() => CompanyTeamModel)
+  upsertCompanyTeam(@Args('input') input: UpsertCompanyTeamInput) {
+    return this.editorialService.upsertTeam(input);
+  }
+
+  @Query(() => CompanyShareholdersModel, { nullable: true })
+  companyShareholders(@Args('companyId') companyId: string) {
+    return this.editorialService.getShareholders(companyId);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(PlatformRole.ADMIN)
+  @Mutation(() => CompanyShareholdersModel)
+  upsertCompanyShareholders(@Args('input') input: UpsertCompanyShareholdersInput) {
+    return this.editorialService.upsertShareholders(input);
+  }
+
+  @Query(() => CompanyCompetitorsModel, { nullable: true })
+  companyCompetitors(@Args('companyId') companyId: string) {
+    return this.editorialService.getCompetitors(companyId);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(PlatformRole.ADMIN)
+  @Mutation(() => CompanyCompetitorsModel)
+  upsertCompanyCompetitors(@Args('input') input: UpsertCompanyCompetitorsInput) {
+    return this.editorialService.upsertCompetitors(input);
   }
 }

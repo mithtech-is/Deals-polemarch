@@ -67,24 +67,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  const navItems = useMemo(() => {
-    const base = [{ href: '/', label: 'Home', shortLabel: 'HM' }];
+  type NavLeaf = { href: string; label: string; shortLabel: string };
+  type NavGroup = { groupLabel: string; groupShortLabel: string; children: NavLeaf[] };
+  type NavItem = NavLeaf | NavGroup;
+
+  const navItems = useMemo<NavItem[]>(() => {
+    const base: NavItem[] = [{ href: '/', label: 'Home', shortLabel: 'HM' }];
     if (isAdmin) {
-      base.push({ href: '/admin/taxonomy', label: 'Admin / Taxonomy', shortLabel: 'TX' });
-      base.push({ href: '/admin/companies', label: 'Admin / Companies', shortLabel: 'CO' });
-    }
-    if (isAdmin && contextCompanyIsin) {
+      base.push({ href: '/admin/companies', label: 'Companies', shortLabel: 'CO' });
       base.push({
-        href: `/admin/companies/${contextCompanyIsin}`,
-        label: 'Admin / Current Company',
-        shortLabel: 'AC'
+        groupLabel: 'Data Model',
+        groupShortLabel: 'DM',
+        children: [
+          { href: '/admin/taxonomy/balance-sheet', label: 'Balance Sheet', shortLabel: 'BS' },
+          { href: '/admin/taxonomy/pnl', label: 'P&L', shortLabel: 'PL' },
+          { href: '/admin/taxonomy/cashflow', label: 'Cash Flow', shortLabel: 'CF' },
+          { href: '/admin/taxonomy/change-in-equity', label: 'SOCIE', shortLabel: 'SOCIE' },
+          { href: '/admin/taxonomy/ratios', label: 'Ratios and Valuations', shortLabel: 'RV' },
+          { href: '/admin/industry-classification', label: 'Industry Classification', shortLabel: 'IC' },
+          { href: '/admin/currency', label: 'Currency', shortLabel: 'CU' }
+        ]
       });
-    }
-    if (contextCompanyId) {
-      base.push({ href: `/company/${contextCompanyId}`, label: 'Company Dashboard', shortLabel: 'DB' });
     }
     return base;
   }, [contextCompanyId, contextCompanyIsin, isAdmin]);
+
+  const [taxonomyGroupOpen, setTaxonomyGroupOpen] = useState(true);
+  useEffect(() => {
+    if (pathname.startsWith('/admin/taxonomy') || pathname.startsWith('/admin/industry-classification') || pathname.startsWith('/admin/currency')) {
+      setTaxonomyGroupOpen(true);
+    }
+  }, [pathname]);
 
   const toggleMenu = () => {
     if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1024px)').matches) {
@@ -133,17 +146,52 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
 
         <nav className="sidebar-nav">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              className={`sidebar-link ${pathname.startsWith(item.href) && item.href !== '/' ? 'active' : ''} ${pathname === item.href ? 'active' : ''}`}
-              href={item.href}
-              onClick={() => setSidebarOpenMobile(false)}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
-              {sidebarExpanded ? item.label : item.shortLabel}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            if ('groupLabel' in item) {
+              const anyActive = item.children.some((c) => pathname.startsWith(c.href));
+              return (
+                <div key={item.groupLabel}>
+                  <button
+                    type="button"
+                    className={`sidebar-link ${anyActive ? 'active' : ''}`}
+                    onClick={() => setTaxonomyGroupOpen((v) => !v)}
+                    style={{ width: '100%', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer' }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+                    {sidebarExpanded ? (
+                      <span style={{ display: 'flex', justifyContent: 'space-between', flex: 1 }}>
+                        <span>{item.groupLabel}</span>
+                        <span>{taxonomyGroupOpen ? '▾' : '▸'}</span>
+                      </span>
+                    ) : item.groupShortLabel}
+                  </button>
+                  {taxonomyGroupOpen && item.children.map((child) => (
+                    <Link
+                      key={child.href}
+                      className={`sidebar-link ${pathname.startsWith(child.href) ? 'active' : ''}`}
+                      href={child.href}
+                      onClick={() => setSidebarOpenMobile(false)}
+                      style={{ paddingLeft: sidebarExpanded ? 32 : undefined }}
+                    >
+                      <span style={{ width: 18 }} />
+                      {sidebarExpanded ? child.label : child.shortLabel}
+                    </Link>
+                  ))}
+                </div>
+              );
+            }
+            return (
+              <Link
+                key={item.href}
+                className={`sidebar-link ${pathname.startsWith(item.href) && item.href !== '/' ? 'active' : ''} ${pathname === item.href ? 'active' : ''}`}
+                href={item.href}
+                onClick={() => setSidebarOpenMobile(false)}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+                {sidebarExpanded ? item.label : item.shortLabel}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="sidebar-footer">

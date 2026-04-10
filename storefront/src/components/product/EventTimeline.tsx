@@ -1,22 +1,35 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 import { getSnapshot, type NewsEventItem, type PriceEventCategory } from "@/lib/snapshot";
 
 const CATEGORY_COLOR: Record<PriceEventCategory, string> = {
-  C: "#059669",
-  N: "#d97706",
-  R: "#e11d48",
+  C: "#059669", // emerald — shareholder-facing corporate actions
+  E: "#2563eb", // blue    — business events
+  N: "#d97706", // amber   — news / commentary
+  R: "#e11d48", // rose    — regulatory
 };
 
 const CATEGORY_LABEL: Record<PriceEventCategory, string> = {
-  C: "Corporate",
+  C: "Corporate action",
+  E: "Business event",
   N: "News",
   R: "Regulatory",
 };
 
+// Sentiment colours match the calcula admin editor so the same row looks
+// the same on both surfaces. 'B' (neutral / black) is also the fallback
+// for null / undefined sentiment values so legacy rows keep rendering in
+// slate-900.
+const SENTIMENT_TEXT_COLOR: Record<string, string> = {
+  G: "#059669",
+  R: "#dc2626",
+  B: "#0f172a",
+};
+
 type Filter = "ALL" | PriceEventCategory;
+type MinImpact = 0 | 1 | 2 | 3 | 4 | 5;
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -55,6 +68,7 @@ export function EventTimeline({ isin }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("ALL");
+  const [minImpact, setMinImpact] = useState<MinImpact>(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showAll, setShowAll] = useState(false);
 
@@ -86,15 +100,25 @@ export function EventTimeline({ isin }: Props) {
   }, [isin]);
 
   const counts = useMemo(() => {
-    const c: Record<PriceEventCategory, number> = { C: 0, N: 0, R: 0 };
+    const c: Record<PriceEventCategory, number> = { C: 0, E: 0, N: 0, R: 0 };
     for (const e of events) c[e.category] += 1;
     return c;
   }, [events]);
 
   const filtered = useMemo(() => {
-    if (filter === "ALL") return events;
-    return events.filter((e) => e.category === filter);
-  }, [events, filter]);
+    // Backend returns events newest-first for the admin editor, but on
+    // the storefront we want an oldest → newest narrative ("story of the
+    // company"): 2015 founding at the top, latest news at the bottom.
+    const byCategory =
+      filter === "ALL" ? events : events.filter((e) => e.category === filter);
+    const byImpact =
+      minImpact === 0
+        ? byCategory
+        : byCategory.filter((e) => (e.impactScore ?? 0) >= minImpact);
+    return [...byImpact].sort(
+      (a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
+    );
+  }, [events, filter, minImpact]);
 
   const visible = useMemo(
     () => (showAll ? filtered : filtered.slice(0, 30)),
@@ -140,39 +164,64 @@ export function EventTimeline({ isin }: Props) {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-      <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+      <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
         <h3 className="text-xl font-bold text-slate-900">Timeline</h3>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {(["ALL", "C", "N", "R"] as Filter[])
-            .filter((f) => f === "ALL" || counts[f] > 0)
-            .map((f) => {
-              const isOn = filter === f;
-              const count = f === "ALL" ? events.length : counts[f];
-              const color = f === "ALL" ? "#64748b" : CATEGORY_COLOR[f];
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            {(["ALL", "C", "E", "N", "R"] as Filter[])
+              .filter((f) => f === "ALL" || counts[f] > 0)
+              .map((f) => {
+                const isOn = filter === f;
+                const count = f === "ALL" ? events.length : counts[f];
+                const color = f === "ALL" ? "#64748b" : CATEGORY_COLOR[f];
+                return (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setFilter(f)}
+                    aria-pressed={isOn}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-full border transition-colors ${
+                      isOn
+                        ? "bg-slate-900 text-white border-slate-900"
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="inline-block h-2 w-2 rounded-full"
+                      style={{ background: color }}
+                    />
+                    <span>{f === "ALL" ? "All" : CATEGORY_LABEL[f]}</span>
+                    <span className={isOn ? "text-slate-300" : "text-slate-400"}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+              Impact
+            </span>
+            {([0, 2, 3, 4, 5] as MinImpact[]).map((min) => {
+              const isOn = minImpact === min;
               return (
                 <button
-                  key={f}
+                  key={min}
                   type="button"
-                  onClick={() => setFilter(f)}
+                  onClick={() => setMinImpact(min)}
                   aria-pressed={isOn}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-full border transition-colors ${
+                  className={`inline-flex items-center px-2.5 py-1 text-[11px] font-bold rounded-full border transition-colors ${
                     isOn
                       ? "bg-slate-900 text-white border-slate-900"
                       : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                   }`}
                 >
-                  <span
-                    aria-hidden="true"
-                    className="inline-block h-2 w-2 rounded-full"
-                    style={{ background: color }}
-                  />
-                  <span>{f === "ALL" ? "All" : CATEGORY_LABEL[f]}</span>
-                  <span className={isOn ? "text-slate-300" : "text-slate-400"}>
-                    {count}
-                  </span>
+                  {min === 0 ? "Any" : `≥ ${min}★`}
                 </button>
               );
             })}
+          </div>
         </div>
       </div>
 
@@ -184,8 +233,9 @@ export function EventTimeline({ isin }: Props) {
         <ol className="relative border-l-2 border-slate-100 ml-2 space-y-5 pl-6">
           {visible.map((e) => {
             const color = CATEGORY_COLOR[e.category];
-            const isExpanded = expanded.has(e.id);
-            const hasMore = e.body && e.body.length > 220;
+            const isOpen = expanded.has(e.id);
+            const panelId = `timeline-panel-${e.id}`;
+            const hasBody = Boolean(e.body && e.body.trim());
             return (
               <li key={e.id} className="relative">
                 <span
@@ -193,43 +243,64 @@ export function EventTimeline({ isin }: Props) {
                   className="absolute -left-[33px] top-0 h-4 w-4 rounded-full border-2 border-white shadow"
                   style={{ background: color }}
                 />
-                <div className="flex items-baseline gap-2 flex-wrap">
-                  <time className="text-xs text-slate-500 font-medium">
-                    {formatDate(e.occurredAt)}
-                  </time>
-                  <span
-                    className="inline-block px-1.5 py-0.5 text-[10px] font-bold rounded"
-                    style={{ background: color, color: "white" }}
-                    title={CATEGORY_LABEL[e.category]}
-                  >
-                    {e.category}
-                  </span>
-                </div>
-                <h4 className="mt-0.5 text-sm font-bold text-slate-900 leading-snug">
-                  {e.title}
-                </h4>
-                {e.body ? (
-                  <p className="mt-1 text-sm text-slate-600 leading-relaxed">
-                    {isExpanded ? e.body : snippet(e.body)}
-                  </p>
-                ) : null}
-                {(hasMore || e.sourceUrl) && (
-                  <div className="mt-2 flex items-center gap-3 text-xs">
-                    {hasMore && (
-                      <button
-                        type="button"
-                        onClick={() => toggleExpanded(e.id)}
-                        className="font-bold text-emerald-700 hover:text-emerald-800"
+                <button
+                  type="button"
+                  onClick={() => (hasBody || e.sourceUrl) && toggleExpanded(e.id)}
+                  aria-expanded={isOpen}
+                  aria-controls={panelId}
+                  className="w-full text-left"
+                  disabled={!hasBody && !e.sourceUrl}
+                >
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <time className="text-xs text-slate-500 font-medium">
+                      {formatDate(e.occurredAt)}
+                    </time>
+                    <span
+                      className="inline-block px-1.5 py-0.5 text-[10px] font-bold rounded"
+                      style={{ background: color, color: "white" }}
+                      title={CATEGORY_LABEL[e.category]}
+                    >
+                      {e.category}
+                    </span>
+                    {e.impactScore != null && e.impactScore > 0 && (
+                      <span
+                        className="text-[10px] font-bold text-amber-500"
+                        title={`Impact ${e.impactScore}/5`}
                       >
-                        {isExpanded ? "Show less" : "Read more"}
-                      </button>
+                        {"★".repeat(e.impactScore)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-0.5 flex items-start justify-between gap-3">
+                    <h4
+                      className="text-sm font-bold leading-snug"
+                      style={{ color: SENTIMENT_TEXT_COLOR[e.sentiment ?? "B"] }}
+                    >
+                      {e.title}
+                    </h4>
+                    {(hasBody || e.sourceUrl) && (
+                      <ChevronDown
+                        aria-hidden="true"
+                        className={`h-4 w-4 flex-shrink-0 text-slate-400 transition-transform duration-200 ${
+                          isOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    )}
+                  </div>
+                </button>
+                {isOpen && (hasBody || e.sourceUrl) && (
+                  <div id={panelId} className="mt-2">
+                    {hasBody && (
+                      <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
+                        {e.body}
+                      </p>
                     )}
                     {e.sourceUrl && (
                       <a
                         href={e.sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 font-bold text-slate-500 hover:text-slate-700"
+                        className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-700"
                       >
                         Source <ExternalLink className="h-3 w-3" />
                       </a>

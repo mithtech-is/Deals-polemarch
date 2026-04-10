@@ -157,7 +157,7 @@ export class FinancialsService {
   private async recalculateDerivedValues(companyId: string, periodId: string) {
     const [lineItems, existingValues] = await Promise.all([
       this.prisma.financialLineItem.findMany({
-        select: { id: true, code: true, isCalculated: true, formula: true }
+        select: { id: true, code: true, parentId: true, isCalculated: true, formula: true }
       }),
       this.prisma.financialMetric.findMany({
         where: { companyId, periodId },
@@ -173,12 +173,41 @@ export class FinancialsService {
     const calculated = lineItems.filter((row) => row.isCalculated && row.formula);
     if (!calculated.length) return;
 
+    // Build parent code -> direct child codes and descendant codes maps for @SUM_* templates.
+    const idToItem = new Map(lineItems.map((row) => [row.id, row]));
+    const childrenByParentCode = new Map<string, string[]>();
+    const descendantsByParentCode = new Map<string, string[]>();
+    for (const row of lineItems) {
+      if (!row.parentId) continue;
+      const parent = idToItem.get(row.parentId);
+      if (!parent) continue;
+      const arr = childrenByParentCode.get(parent.code) ?? [];
+      arr.push(row.code);
+      childrenByParentCode.set(parent.code, arr);
+    }
+    const collectDescendants = (code: string, acc: string[]) => {
+      const kids = childrenByParentCode.get(code) ?? [];
+      for (const k of kids) {
+        acc.push(k);
+        collectDescendants(k, acc);
+      }
+    };
+    for (const row of lineItems) {
+      const acc: string[] = [];
+      collectDescendants(row.code, acc);
+      if (acc.length) descendantsByParentCode.set(row.code, acc);
+    }
+    const ctx = { childrenByParentCode, descendantsByParentCode };
+
     const pending = new Map<string, number>();
 
     for (let pass = 0; pass < calculated.length; pass += 1) {
       let changed = false;
       for (const item of calculated) {
-        const next = this.evaluateFormula(item.formula ?? '', codeToValue);
+        const next = this.evaluateFormula(item.formula ?? '', codeToValue, {
+          currentCode: item.code,
+          ...ctx
+        });
         if (next === null) continue;
         const prev = codeToValue.get(item.code);
         if (prev === undefined || Math.abs(prev - next) > 1e-9) {
@@ -218,22 +247,65 @@ export class FinancialsService {
 
   private static readonly IDENT_RE = /\b[a-zA-Z_][a-zA-Z0-9_]*\b/g;
   private static readonly SAFE_RE = /[^0-9+\-*/().\s]/;
+  private static readonly TEMPLATE_RE =
+    /@SUM_CHILDREN_EXCEPT\s*\(([^)]*)\)|@SUM_CHILDREN\b|@SUM_DESCENDANTS\b/gi;
   private readonly formulaIdentCache = new Map<string, string[]>();
 
-  private evaluateFormula(formula: string, codeToValue: Map<string, number>): number | null {
+  private expandTemplates(
+    formula: string,
+    ctx: {
+      currentCode: string;
+      childrenByParentCode: Map<string, string[]>;
+      descendantsByParentCode: Map<string, string[]>;
+    }
+  ): string {
+    return formula.replace(FinancialsService.TEMPLATE_RE, (match, exceptList?: string) => {
+      const upper = match.toUpperCase();
+      let codes: string[] = [];
+      if (upper.startsWith('@SUM_CHILDREN_EXCEPT')) {
+        const excluded = new Set(
+          (exceptList ?? '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        );
+        codes = (ctx.childrenByParentCode.get(ctx.currentCode) ?? []).filter(
+          (c) => !excluded.has(c)
+        );
+      } else if (upper === '@SUM_CHILDREN') {
+        codes = ctx.childrenByParentCode.get(ctx.currentCode) ?? [];
+      } else if (upper === '@SUM_DESCENDANTS') {
+        codes = ctx.descendantsByParentCode.get(ctx.currentCode) ?? [];
+      }
+      if (!codes.length) return '0';
+      return `(${codes.join(' + ')})`;
+    });
+  }
+
+  private evaluateFormula(
+    formula: string,
+    codeToValue: Map<string, number>,
+    ctx?: {
+      currentCode: string;
+      childrenByParentCode: Map<string, string[]>;
+      descendantsByParentCode: Map<string, string[]>;
+    }
+  ): number | null {
     if (!formula.trim()) return null;
 
-    let identifiers = this.formulaIdentCache.get(formula);
+    const expanded = ctx ? this.expandTemplates(formula, ctx) : formula;
+
+    let identifiers = this.formulaIdentCache.get(expanded);
     if (!identifiers) {
-      identifiers = Array.from(new Set(formula.match(FinancialsService.IDENT_RE) ?? []));
-      this.formulaIdentCache.set(formula, identifiers);
+      identifiers = Array.from(new Set(expanded.match(FinancialsService.IDENT_RE) ?? []));
+      this.formulaIdentCache.set(expanded, identifiers);
     }
 
     for (const id of identifiers) {
       if (!codeToValue.has(id)) return null;
     }
 
-    const replaced = formula.replace(FinancialsService.IDENT_RE, (code) => String(codeToValue.get(code)));
+    const replaced = expanded.replace(FinancialsService.IDENT_RE, (code) => String(codeToValue.get(code)));
     if (FinancialsService.SAFE_RE.test(replaced)) return null;
 
     try {

@@ -22,19 +22,19 @@ async function main() {
     parentCode?: string;
   };
 
+  // Note: statement-level placeholder roots (bs_root / pnl_root / cf_root) were
+  // removed — the URL/statementType already identifies the statement. Real
+  // root line items now sit at the top of each tree directly.
   const lineItems: SeedLineItem[] = [
-    { code: 'bs_root', name: 'Balance Sheet', statementType: StatementType.balance_sheet, displayOrder: 1, isRequired: true },
-    { code: 'pnl_root', name: 'Profit and Loss', statementType: StatementType.pnl, displayOrder: 1, isRequired: true },
-    { code: 'cf_root', name: 'Cash Flow', statementType: StatementType.cashflow, displayOrder: 1, isRequired: true },
-    { code: 'assets', name: 'Assets', statementType: StatementType.balance_sheet, displayOrder: 10, parentCode: 'bs_root' },
-    { code: 'equity_liabilities', name: 'Equity and Liabilities', statementType: StatementType.balance_sheet, displayOrder: 20, parentCode: 'bs_root' },
-    { code: 'revenue_section', name: 'Revenue', statementType: StatementType.pnl, displayOrder: 10, parentCode: 'pnl_root' },
-    { code: 'expense_section', name: 'Expenses', statementType: StatementType.pnl, displayOrder: 20, parentCode: 'pnl_root' },
-    { code: 'operating_activities', name: 'Operating Activities', statementType: StatementType.cashflow, displayOrder: 10, parentCode: 'cf_root' },
-    { code: 'investing_activities', name: 'Investing Activities', statementType: StatementType.cashflow, displayOrder: 20, parentCode: 'cf_root' },
-    { code: 'financing_activities', name: 'Financing Activities', statementType: StatementType.cashflow, displayOrder: 30, parentCode: 'cf_root' },
+    { code: 'equity_liabilities', name: 'Equity and Liabilities', statementType: StatementType.balance_sheet, displayOrder: 10 },
+    { code: 'assets', name: 'Assets', statementType: StatementType.balance_sheet, displayOrder: 20 },
+    { code: 'revenue_section', name: 'Revenue', statementType: StatementType.pnl, displayOrder: 10 },
+    { code: 'expense_section', name: 'Expenses', statementType: StatementType.pnl, displayOrder: 20 },
+    { code: 'operating_activities', name: 'Operating Activities', statementType: StatementType.cashflow, displayOrder: 10 },
+    { code: 'investing_activities', name: 'Investing Activities', statementType: StatementType.cashflow, displayOrder: 20 },
+    { code: 'financing_activities', name: 'Financing Activities', statementType: StatementType.cashflow, displayOrder: 30 },
     { code: 'revenue', name: 'Revenue from Operations', statementType: StatementType.pnl, displayOrder: 11, parentCode: 'revenue_section' },
-    { code: 'net_profit', name: 'Net Profit', statementType: StatementType.pnl, displayOrder: 99, parentCode: 'pnl_root' },
+    { code: 'net_profit', name: 'Net Profit', statementType: StatementType.pnl, displayOrder: 99 },
     { code: 'cash_and_cash_equivalents', name: 'Cash and Cash Equivalents', statementType: StatementType.balance_sheet, displayOrder: 40, parentCode: 'assets' }
   ];
 

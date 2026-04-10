@@ -46,6 +46,27 @@ export class CompaniesController {
     return { success: true, company_id: id };
   }
 
+  /**
+   * GET /api/companies/:id/export — Dump the full company (metadata,
+   * editorial, timeline, price history, financial periods + metrics) as
+   * a self-contained JSON blob. Admin-only.
+   */
+  @Get(':id/export')
+  @Roles(PlatformRole.ADMIN)
+  async exportOne(@Param('id') id: string) {
+    return this.companiesService.exportOne(id);
+  }
+
+  /**
+   * POST /api/companies/import — Inverse of export. Creates or updates
+   * the company by ISIN, then upserts every child row. Admin-only.
+   */
+  @Post('import')
+  @Roles(PlatformRole.ADMIN)
+  async importOne(@Body() payload: Record<string, unknown>) {
+    return this.companiesService.importOne(payload);
+  }
+
   @Post('sync-all')
   @Roles(PlatformRole.ADMIN)
   async syncAll() {

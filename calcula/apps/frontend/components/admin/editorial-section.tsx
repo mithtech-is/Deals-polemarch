@@ -18,6 +18,7 @@ import type {
   CompanyNarrative,
   CompanyProsCons
 } from '@/types/domain';
+import { MarkdownEditor } from './markdown-editor';
 
 type Props = { companyId: string };
 
@@ -38,6 +39,10 @@ export function EditorialSection({ companyId }: Props) {
   const [businessModel, setBusinessModel] = useState('');
   const [competitiveMoat, setCompetitiveMoat] = useState('');
   const [risks, setRisks] = useState('');
+  const [financialInsights, setFinancialInsights] = useState('');
+  const [industryAnalysis, setIndustryAnalysis] = useState('');
+  const [sectorAnalysis, setSectorAnalysis] = useState('');
+  const [activityAnalysis, setActivityAnalysis] = useState('');
 
   // ProsCons form
   const [pros, setPros] = useState('');
@@ -66,6 +71,10 @@ export function EditorialSection({ companyId }: Props) {
       setBusinessModel(n?.businessModel ?? '');
       setCompetitiveMoat(n?.competitiveMoat ?? '');
       setRisks(n?.risks ?? '');
+      setFinancialInsights(n?.financialInsights ?? '');
+      setIndustryAnalysis(n?.industryAnalysis ?? '');
+      setSectorAnalysis(n?.sectorAnalysis ?? '');
+      setActivityAnalysis(n?.activityAnalysis ?? '');
       const pc = prosCons.companyProsCons;
       setPros(pc?.pros ?? '');
       setCons(pc?.cons ?? '');
@@ -95,7 +104,11 @@ export function EditorialSection({ companyId }: Props) {
             summary: summary.trim(),
             businessModel: businessModel.trim() || null,
             competitiveMoat: competitiveMoat.trim() || null,
-            risks: risks.trim() || null
+            risks: risks.trim() || null,
+            financialInsights: financialInsights.trim() || null,
+            industryAnalysis: industryAnalysis.trim() || null,
+            sectorAnalysis: sectorAnalysis.trim() || null,
+            activityAnalysis: activityAnalysis.trim() || null
           }
         },
         token
@@ -207,47 +220,120 @@ export function EditorialSection({ companyId }: Props) {
       {loading && <p className="muted">Loading editorial…</p>}
 
       {/* Company Overview */}
-      <div className="card" style={{ marginTop: 12 }}>
-        <h3 style={{ margin: '0 0 8px 0' }}>Company Overview</h3>
-        <label className="col">
-          <span>Summary (markdown, required)</span>
-          <textarea
-            rows={6}
-            value={summary}
-            onChange={(e) => setSummary(e.target.value)}
-            placeholder="One or two paragraphs about the company. Supports **bold**, *italic*, and bullet lists."
-          />
-        </label>
-        <label className="col" style={{ marginTop: 10 }}>
-          <span>Business model (optional)</span>
-          <textarea
-            rows={4}
-            value={businessModel}
-            onChange={(e) => setBusinessModel(e.target.value)}
-          />
-        </label>
-        <label className="col" style={{ marginTop: 10 }}>
-          <span>Competitive moat (optional)</span>
-          <textarea
-            rows={4}
-            value={competitiveMoat}
-            onChange={(e) => setCompetitiveMoat(e.target.value)}
-          />
-        </label>
-        <label className="col" style={{ marginTop: 10 }}>
-          <span>Risks (optional)</span>
-          <textarea rows={4} value={risks} onChange={(e) => setRisks(e.target.value)} />
-        </label>
-        <div className="row" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+      <div id="company-overview" className="card" style={{ marginTop: 12, scrollMarginTop: 80 }}>
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <h3 style={{ margin: 0 }}>Company Overview</h3>
           <button onClick={saveOverview} disabled={savingOverview}>
             {savingOverview ? 'Saving…' : 'Save Overview'}
           </button>
         </div>
+        <p className="muted" style={{ fontSize: 11, marginTop: 0, marginBottom: 8 }}>
+          All four fields support full GitHub-flavoured markdown — headings, tables, links,
+          code, blockquotes, lists, and images. Use the toolbar or type markdown directly;
+          the right pane shows the exact storefront render.
+        </p>
+        <label className="col">
+          <span>Summary (required)</span>
+          <MarkdownEditor
+            value={summary}
+            onChange={setSummary}
+            rows={8}
+            placeholder="One or two paragraphs about the company. Headings, **bold**, tables, links — all supported."
+          />
+        </label>
+        <label className="col" style={{ marginTop: 10 }}>
+          <span>Business model (optional)</span>
+          <MarkdownEditor value={businessModel} onChange={setBusinessModel} rows={6} />
+        </label>
+        <label className="col" style={{ marginTop: 10 }}>
+          <span>Competitive moat (optional)</span>
+          <MarkdownEditor value={competitiveMoat} onChange={setCompetitiveMoat} rows={6} />
+        </label>
+        <label className="col" style={{ marginTop: 10 }}>
+          <span>Risks (optional)</span>
+          <MarkdownEditor value={risks} onChange={setRisks} rows={6} />
+        </label>
+      </div>
+
+      {/* Financial Insights — raw HTML */}
+      <div id="financial-insights" className="card" style={{ marginTop: 12, scrollMarginTop: 80 }}>
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <h3 style={{ margin: 0 }}>Financial Insights</h3>
+          <button onClick={saveOverview} disabled={savingOverview}>
+            {savingOverview ? 'Saving…' : 'Save Financial Insights'}
+          </button>
+        </div>
+        <p className="muted" style={{ fontSize: 11, marginTop: 0, marginBottom: 8 }}>
+          Raw HTML. Whatever you paste here is rendered verbatim on the storefront
+          (inside a sanitiser on the Medusa side). Use <code>&lt;h3&gt;</code>,
+          <code> &lt;p&gt;</code>, <code>&lt;ul&gt;</code>, <code>&lt;table&gt;</code>, etc.
+          Shares the <em>editorial</em> snapshot with the Overview — one save fires one webhook.
+        </p>
+        <label className="col">
+          <span>HTML body</span>
+          <textarea
+            rows={14}
+            value={financialInsights}
+            onChange={(e) => setFinancialInsights(e.target.value)}
+            placeholder={'<h3>Revenue trajectory</h3>\n<p>FY25 revenue came in at <strong>₹5,872 Cr</strong>, down 12% YoY…</p>\n<ul>\n  <li>Gross margin recovered to 21%</li>\n  <li>Cash burn narrowed to ₹611 Cr</li>\n</ul>'}
+            style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12 }}
+          />
+        </label>
+      </div>
+
+      {/* Industry → Sector → Activity analysis — raw HTML */}
+      <div id="industry-sector-activity" className="card" style={{ marginTop: 12, scrollMarginTop: 80 }}>
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <h3 style={{ margin: 0 }}>Industry · Sector · Activity Analysis</h3>
+          <button onClick={saveOverview} disabled={savingOverview}>
+            {savingOverview ? 'Saving…' : 'Save Industry Analysis'}
+          </button>
+        </div>
+        <p className="muted" style={{ fontSize: 11, marginTop: 0, marginBottom: 8 }}>
+          Three nested levels following the TRBC hierarchy on this company: Industry → Sector →
+          Activity. All three accept raw HTML and render as three stacked cards on the storefront.
+          Leave any level blank to hide that card.
+        </p>
+        <label className="col">
+          <span>Industry analysis (HTML)</span>
+          <textarea
+            rows={8}
+            value={industryAnalysis}
+            onChange={(e) => setIndustryAnalysis(e.target.value)}
+            placeholder={'<p>The Indian digital healthcare industry is…</p>'}
+            style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12 }}
+          />
+        </label>
+        <label className="col" style={{ marginTop: 10 }}>
+          <span>Sector analysis (HTML)</span>
+          <textarea
+            rows={8}
+            value={sectorAnalysis}
+            onChange={(e) => setSectorAnalysis(e.target.value)}
+            placeholder={'<p>Within digital health, the online pharmacy sector…</p>'}
+            style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12 }}
+          />
+        </label>
+        <label className="col" style={{ marginTop: 10 }}>
+          <span>Activity analysis (HTML)</span>
+          <textarea
+            rows={8}
+            value={activityAnalysis}
+            onChange={(e) => setActivityAnalysis(e.target.value)}
+            placeholder={'<p>The company operates in Retail Drugs without Grocery…</p>'}
+            style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12 }}
+          />
+        </label>
       </div>
 
       {/* Pros / Cons */}
-      <div className="card" style={{ marginTop: 12 }}>
-        <h3 style={{ margin: '0 0 4px 0' }}>Pros & Cons (quick scan)</h3>
+      <div id="pros-cons" className="card" style={{ marginTop: 12, scrollMarginTop: 80 }}>
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+          <h3 style={{ margin: 0 }}>Pros & Cons (quick scan)</h3>
+          <button onClick={saveProsCons} disabled={savingProsCons}>
+            {savingProsCons ? 'Saving…' : 'Save Pros / Cons'}
+          </button>
+        </div>
         <p className="muted" style={{ fontSize: 11, marginTop: 0 }}>
           3–5 short bullets each — the "at a glance" TL;DR. For long-form analyst commentary
           on <em>why</em> the company has structural advantages or specific risks, use the
@@ -274,15 +360,10 @@ export function EditorialSection({ companyId }: Props) {
             />
           </label>
         </div>
-        <div className="row" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
-          <button onClick={saveProsCons} disabled={savingProsCons}>
-            {savingProsCons ? 'Saving…' : 'Save Pros / Cons'}
-          </button>
-        </div>
       </div>
 
       {/* FAQ */}
-      <div className="card" style={{ marginTop: 12 }}>
+      <div id="faq" className="card" style={{ marginTop: 12, scrollMarginTop: 80 }}>
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h3 style={{ margin: '0 0 4px 0' }}>FAQ</h3>
@@ -303,6 +384,9 @@ export function EditorialSection({ companyId }: Props) {
             </button>
             <button className="secondary" onClick={addFaqRow}>
               Add question
+            </button>
+            <button onClick={saveFaq} disabled={savingFaq}>
+              {savingFaq ? 'Saving…' : 'Save FAQ'}
             </button>
           </div>
         </div>
@@ -379,11 +463,6 @@ export function EditorialSection({ companyId }: Props) {
           </div>
         )}
 
-        <div className="row" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
-          <button onClick={saveFaq} disabled={savingFaq}>
-            {savingFaq ? 'Saving…' : 'Save FAQ'}
-          </button>
-        </div>
       </div>
     </div>
   );

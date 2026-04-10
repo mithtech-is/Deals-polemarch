@@ -33,6 +33,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       price_version?: number
       news_version?: number
       editorial_version?: number
+      profile_version?: number
       content_updated_at?: string
     }
 
@@ -61,6 +62,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
           price_version: payload.price_version,
           news_version: payload.news_version,
           editorial_version: payload.editorial_version,
+          profile_version: payload.profile_version,
           content_updated_at: payload.content_updated_at ?? new Date().toISOString(),
         })
         if (result?.updated && result?.prices && typeof result?.latestPrice === "number") {

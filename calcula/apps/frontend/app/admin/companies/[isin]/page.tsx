@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { gql } from '@/lib/api';
+import { gql, rest } from '@/lib/api';
 import { useAuth } from '@/components/auth-context';
 import { DashboardPage } from '@/components/dashboard/template';
 import { RequireAuth } from '@/components/require-auth';
@@ -20,6 +20,12 @@ import { PeriodFinancialEditor } from '@/components/admin/period-financial-edito
 import { PriceHistorySection } from '@/components/admin/price-history-section';
 import { NewsEventsSection } from '@/components/admin/news-events-section';
 import { EditorialSection } from '@/components/admin/editorial-section';
+import { CompanyDetailsSection } from '@/components/admin/company-details-section';
+import { ValuationsSection } from '@/components/admin/valuations-section';
+import { TeamSection } from '@/components/admin/team-section';
+import { ShareholdersSection } from '@/components/admin/shareholders-section';
+import { CompetitorsSection } from '@/components/admin/competitors-section';
+import { CompanyTabs, type CompanyTab } from '@/components/admin/company-tabs';
 
 export default function AdminCompanyDetailPage() {
   const { token } = useAuth();
@@ -36,12 +42,24 @@ export default function AdminCompanyDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editDraft, setEditDraft] = useState({
     name: '',
-    sector: '',
-    industry: '',
+    sectorId: '',
+    industryId: '',
+    activityId: '',
     cin: '',
     description: ''
   });
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [trbcTree, setTrbcTree] = useState<
+    Array<{
+      id: string;
+      name: string;
+      industries: Array<{
+        id: string;
+        name: string;
+        activities: Array<{ id: string; name: string }>;
+      }>;
+    }>
+  >([]);
 
   const loadCompany = useCallback(async () => {
     if (!isin) return;
@@ -96,12 +114,21 @@ export default function AdminCompanyDetailPage() {
     if (!company) return;
     setEditDraft({
       name: company.name,
-      sector: company.sector ?? '',
-      industry: company.industry ?? '',
+      sectorId: company.sectorId ?? '',
+      industryId: company.industryId ?? '',
+      activityId: company.activityId ?? '',
       cin: company.cin ?? '',
       description: company.description ?? ''
     });
     setEditOpen(true);
+    // Load tree lazily the first time the modal opens.
+    if (!trbcTree.length) {
+      void rest<typeof trbcTree>('/industry-classification/tree', {}, token)
+        .then(setTrbcTree)
+        .catch(() => {
+          /* ignore — dropdowns will just be empty */
+        });
+    }
   };
 
   const submitEdit = async () => {
@@ -110,14 +137,21 @@ export default function AdminCompanyDetailPage() {
     setError(null);
     setSuccess(null);
     try {
+      const selectedSector = trbcTree.find((s) => s.id === editDraft.sectorId);
+      const selectedIndustry = selectedSector?.industries.find((i) => i.id === editDraft.industryId);
+      const selectedActivity = selectedIndustry?.activities.find((a) => a.id === editDraft.activityId);
       await gql(
         UPDATE_COMPANY_MUTATION,
         {
           id: company.id,
           input: {
             name: editDraft.name.trim(),
-            sector: editDraft.sector.trim() || undefined,
-            industry: editDraft.industry.trim() || undefined,
+            sectorId: editDraft.sectorId || null,
+            industryId: editDraft.industryId || null,
+            activityId: editDraft.activityId || null,
+            sector: selectedSector?.name ?? null,
+            industry: selectedIndustry?.name ?? null,
+            activity: selectedActivity?.name ?? null,
             cin: editDraft.cin.trim() || undefined,
             description: editDraft.description.trim() || undefined
           }
@@ -142,6 +176,61 @@ export default function AdminCompanyDetailPage() {
       router.push('/admin/companies');
     } catch (e) {
       setError((e as Error).message);
+    }
+  };
+
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  const exportCompany = async () => {
+    if (!company) return;
+    setError(null);
+    setSuccess(null);
+    try {
+      const payload = await rest<Record<string, unknown>>(
+        `/companies/${company.id}/export`,
+        { method: 'GET' },
+        token
+      );
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: 'application/json'
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${company.isin}-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setSuccess('Export downloaded');
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setSuccess(null);
+    try {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      const res = await rest<{ imported: Record<string, number>; isin: string }>(
+        '/companies/import',
+        { method: 'POST', body: JSON.stringify(payload) },
+        token
+      );
+      const counts = Object.entries(res.imported)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(', ');
+      setSuccess(`Imported ${res.isin} — ${counts}`);
+      await loadCompany();
+      if (company?.id) await loadPeriods(company.id);
+    } catch (err) {
+      setError(`Import failed: ${(err as Error).message}`);
+    } finally {
+      e.target.value = '';
     }
   };
 
@@ -198,6 +287,22 @@ export default function AdminCompanyDetailPage() {
             <button className="secondary" onClick={openEdit}>
               Edit metadata
             </button>
+            <button className="secondary" onClick={exportCompany}>
+              Export JSON
+            </button>
+            <button
+              className="secondary"
+              onClick={() => importInputRef.current?.click()}
+            >
+              Import JSON
+            </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={onImportFile}
+              style={{ display: 'none' }}
+            />
             <button
               className="secondary"
               onClick={deleteCompany}
@@ -211,19 +316,73 @@ export default function AdminCompanyDetailPage() {
         {error && <p className="error">{error}</p>}
         {success && <p className="success">{success}</p>}
 
-        <PeriodsSection
-          companyId={company.id}
-          periods={periods}
-          onPeriodsChanged={(next) => setPeriods(next)}
+        <CompanyTabs
+          tabs={(
+            [
+              {
+                id: 'editorial',
+                label: 'Editorial',
+                aliases: ['company-overview', 'pros-cons', 'faq'],
+                render: () => <EditorialSection companyId={company.id} />
+              },
+              {
+                id: 'details',
+                label: 'Details',
+                render: () => <CompanyDetailsSection companyId={company.id} />
+              },
+              {
+                id: 'valuations',
+                label: 'Valuations',
+                render: () => <ValuationsSection companyId={company.id} />
+              },
+              {
+                id: 'market',
+                label: 'Market',
+                aliases: ['periods', 'prices'],
+                render: () => (
+                  <div className="col" style={{ gap: 12 }}>
+                    <PeriodsSection
+                      companyId={company.id}
+                      periods={periods}
+                      onPeriodsChanged={(next) => setPeriods(next)}
+                    />
+                    <PriceHistorySection companyId={company.id} />
+                  </div>
+                )
+              },
+              {
+                id: 'timeline',
+                label: 'Timeline',
+                render: () => <NewsEventsSection companyId={company.id} />
+              },
+              {
+                id: 'people',
+                label: 'People',
+                aliases: ['team', 'shareholders'],
+                render: () => (
+                  <div className="col" style={{ gap: 12 }}>
+                    <TeamSection companyId={company.id} />
+                    <ShareholdersSection companyId={company.id} />
+                  </div>
+                )
+              },
+              {
+                id: 'competitors',
+                label: 'Competitors',
+                render: () => (
+                  <CompetitorsSection companyId={company.id} companyName={company.name} />
+                )
+              },
+              {
+                id: 'financials',
+                label: 'Financials',
+                render: () => (
+                  <PeriodFinancialEditor companyId={company.id} periods={periods} />
+                )
+              }
+            ] satisfies ReadonlyArray<CompanyTab>
+          )}
         />
-
-        <PriceHistorySection companyId={company.id} />
-
-        <NewsEventsSection companyId={company.id} />
-
-        <EditorialSection companyId={company.id} />
-
-        <PeriodFinancialEditor companyId={company.id} periods={periods} />
 
         <Modal isOpen={editOpen} onClose={() => setEditOpen(false)} title="Edit company metadata">
           <div className="grid grid-2" style={{ marginBottom: 20 }}>
@@ -237,14 +396,61 @@ export default function AdminCompanyDetailPage() {
             </label>
             <label className="col">
               <span>Sector</span>
-              <input value={editDraft.sector} onChange={(e) => setEditDraft((p) => ({ ...p, sector: e.target.value }))} />
+              <select
+                value={editDraft.sectorId}
+                onChange={(e) =>
+                  setEditDraft((p) => ({
+                    ...p,
+                    sectorId: e.target.value,
+                    industryId: '',
+                    activityId: ''
+                  }))
+                }
+              >
+                <option value="">—</option>
+                {trbcTree.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="col">
               <span>Industry</span>
-              <input
-                value={editDraft.industry}
-                onChange={(e) => setEditDraft((p) => ({ ...p, industry: e.target.value }))}
-              />
+              <select
+                value={editDraft.industryId}
+                disabled={!editDraft.sectorId}
+                onChange={(e) =>
+                  setEditDraft((p) => ({ ...p, industryId: e.target.value, activityId: '' }))
+                }
+              >
+                <option value="">—</option>
+                {trbcTree
+                  .find((s) => s.id === editDraft.sectorId)
+                  ?.industries.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label className="col">
+              <span>Activity</span>
+              <select
+                value={editDraft.activityId}
+                disabled={!editDraft.industryId}
+                onChange={(e) => setEditDraft((p) => ({ ...p, activityId: e.target.value }))}
+              >
+                <option value="">—</option>
+                {trbcTree
+                  .find((s) => s.id === editDraft.sectorId)
+                  ?.industries.find((i) => i.id === editDraft.industryId)
+                  ?.activities.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+              </select>
             </label>
             <label className="col">
               <span>CIN</span>

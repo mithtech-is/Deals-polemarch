@@ -14,6 +14,10 @@ import { PricesModule } from './modules/prices/prices.module';
 import { SnapshotsModule } from './modules/snapshots/snapshots.module';
 import { NewsEventsModule } from './modules/news-events/news-events.module';
 import { EditorialModule } from './modules/editorial/editorial.module';
+import { ProfileModule } from './modules/profile/profile.module';
+import { IndustryClassificationModule } from './modules/industry-classification/industry-classification.module';
+import { ValueInModule } from './modules/value-in/value-in.module';
+import { SiteSettingsModule } from './modules/site-settings/site-settings.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 
@@ -35,7 +39,11 @@ import { RolesGuard } from './common/guards/roles.guard';
     PricesModule,
     SnapshotsModule,
     NewsEventsModule,
-    EditorialModule
+    EditorialModule,
+    ProfileModule,
+    IndustryClassificationModule,
+    ValueInModule,
+    SiteSettingsModule
   ],
   providers: [
     {

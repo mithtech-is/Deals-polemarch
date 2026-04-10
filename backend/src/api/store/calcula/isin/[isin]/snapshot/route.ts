@@ -23,7 +23,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
  * ISIN so the next read returns the new row.
  */
 
-type Kind = "prices" | "statements" | "news" | "editorial" | "both"
+type Kind = "prices" | "statements" | "news" | "editorial" | "profile" | "both"
 
 type CacheEntry = {
   exp: number
@@ -57,7 +57,7 @@ function evictIfFull() {
 
 /** Public helper so the calcula module can invalidate on writes. */
 export function invalidateRouteCache(isin: string) {
-  const kinds: Kind[] = ["prices", "statements", "news", "editorial", "both"]
+  const kinds: Kind[] = ["prices", "statements", "news", "editorial", "profile", "both"]
   for (const k of kinds) routeCache.delete(cacheKey(isin, k))
 }
 ;(globalThis as any).__calculaInvalidateRouteCache = invalidateRouteCache
@@ -66,7 +66,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   try {
     const { isin } = req.params
     const kindParam = (req.query?.kind as string | undefined) ?? "both"
-    const validKinds: Kind[] = ["prices", "statements", "news", "editorial", "both"]
+    const validKinds: Kind[] = ["prices", "statements", "news", "editorial", "profile", "both"]
     const kind: Kind = (validKinds as string[]).includes(kindParam)
       ? (kindParam as Kind)
       : "both"
@@ -86,10 +86,11 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       const priceVersion = row.price_version || "0"
       const newsVersion = row.news_version || "0"
       const editorialVersion = row.editorial_version || "0"
-      // ETag composes all four version numbers so any kind's bump
-      // invalidates every cached body for that ISIN. The format is
-      // stable across kinds so conditional GETs still work.
-      const etag = `"${statementsVersion}:${priceVersion}:${newsVersion}:${editorialVersion}"`
+      const profileVersion = (row as any).profile_version || "0"
+      // ETag composes all version numbers so any kind's bump invalidates
+      // every cached body for that ISIN. The format is stable across kinds
+      // so conditional GETs still work.
+      const etag = `"${statementsVersion}:${priceVersion}:${newsVersion}:${editorialVersion}:${profileVersion}"`
 
       // Assemble the response body with raw text blobs — no parse/restringify.
       const parts: string[] = []
@@ -99,6 +100,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       parts.push(`,"price_version":${parseInt(priceVersion, 10) || 0}`)
       parts.push(`,"news_version":${parseInt(newsVersion, 10) || 0}`)
       parts.push(`,"editorial_version":${parseInt(editorialVersion, 10) || 0}`)
+      parts.push(`,"profile_version":${parseInt(profileVersion, 10) || 0}`)
       parts.push(`,"content_updated_at":${JSON.stringify(row.content_updated_at || "")}`)
       if (kind === "statements" || kind === "both") {
         parts.push(`,"statements":${row.statements_snapshot || "null"}`)
@@ -111,6 +113,9 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       }
       if (kind === "editorial") {
         parts.push(`,"editorial":${row.editorial_snapshot || "null"}`)
+      }
+      if (kind === "profile") {
+        parts.push(`,"profile":${(row as any).profile_snapshot || "null"}`)
       }
       parts.push("}")
       const body = parts.join("")

@@ -7,13 +7,15 @@ import { getSnapshot, type NewsEventItem, type PriceEventCategory } from "@/lib/
 // Colour palette must match PriceChart.tsx and the Calcula admin UI so
 // the same tag looks the same everywhere.
 const CATEGORY_COLOR: Record<PriceEventCategory, string> = {
-  C: "#059669", // emerald — corporate events
-  N: "#d97706", // amber — news
-  R: "#e11d48", // rose — regulatory
+  C: "#059669", // emerald — corporate actions
+  E: "#2563eb", // blue    — business events
+  N: "#d97706", // amber   — news
+  R: "#e11d48", // rose    — regulatory
 };
 
 const CATEGORY_LABEL: Record<PriceEventCategory, string> = {
-  C: "Corporate",
+  C: "Corporate action",
+  E: "Business event",
   N: "News",
   R: "Regulatory",
 };
@@ -86,7 +88,7 @@ export function NewsPanel({ isin }: Props) {
   }, [isin]);
 
   const counts = useMemo(() => {
-    const c: Record<PriceEventCategory, number> = { C: 0, N: 0, R: 0 };
+    const c: Record<PriceEventCategory, number> = { C: 0, E: 0, N: 0, R: 0 };
     for (const e of events) c[e.category] += 1;
     return c;
   }, [events]);

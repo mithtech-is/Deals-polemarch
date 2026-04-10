@@ -9,6 +9,7 @@ type VersionEnvelope = {
   price_version: number
   news_version?: number
   editorial_version?: number
+  profile_version?: number
   content_updated_at: string
 }
 
@@ -195,28 +196,34 @@ class CalculaModuleService extends MedusaService({
     const localEditorialVersion = row
       ? parseInt((row as any).editorial_version || "0", 10)
       : -1
+    const localProfileVersion = row
+      ? parseInt((row as any).profile_version || "0", 10)
+      : -1
 
     const needStatements = payload.statements_version > localStatementsVersion
     const needPrices = payload.price_version > localPriceVersion
-    // news_version / editorial_version are optional on the envelope for
-    // back-compat with older Calcula deployments that pre-date Phase 3.
+    // news_version / editorial_version / profile_version are optional on the
+    // envelope for back-compat with older Calcula deployments.
     const needNews =
       typeof payload.news_version === "number" &&
       payload.news_version > localNewsVersion
     const needEditorial =
       typeof payload.editorial_version === "number" &&
       payload.editorial_version > localEditorialVersion
+    const needProfile =
+      typeof payload.profile_version === "number" &&
+      payload.profile_version > localProfileVersion
 
     console.log(
       `[calcula.handleVersionEnvelope] ${payload.isin} ` +
-        `local(s=${localStatementsVersion},p=${localPriceVersion},n=${localNewsVersion},e=${localEditorialVersion}) ` +
+        `local(s=${localStatementsVersion},p=${localPriceVersion},n=${localNewsVersion},e=${localEditorialVersion},pr=${localProfileVersion}) ` +
         `remote(s=${payload.statements_version},p=${payload.price_version},` +
-        `n=${payload.news_version ?? "-"},e=${payload.editorial_version ?? "-"}) ` +
+        `n=${payload.news_version ?? "-"},e=${payload.editorial_version ?? "-"},pr=${payload.profile_version ?? "-"}) ` +
         `→ needStatements=${needStatements} needPrices=${needPrices} ` +
-        `needNews=${needNews} needEditorial=${needEditorial}`
+        `needNews=${needNews} needEditorial=${needEditorial} needProfile=${needProfile}`
     )
 
-    if (!needStatements && !needPrices && !needNews && !needEditorial && row) {
+    if (!needStatements && !needPrices && !needNews && !needEditorial && !needProfile && row) {
       // Nothing to do other than touching metadata
       return { updated: false }
     }
@@ -234,6 +241,9 @@ class CalculaModuleService extends MedusaService({
     }
     if (typeof payload.editorial_version === "number") {
       updates.editorial_version = String(payload.editorial_version)
+    }
+    if (typeof payload.profile_version === "number") {
+      updates.profile_version = String(payload.profile_version)
     }
 
     let priceSnapshotJson: any = null
@@ -260,6 +270,12 @@ class CalculaModuleService extends MedusaService({
         `/api/companies/by-isin/${encodeURIComponent(payload.isin)}/snapshot/editorial`
       )
       updates.editorial_snapshot = JSON.stringify(snap)
+    }
+    if (needProfile) {
+      const snap = await callCalcula(
+        `/api/companies/by-isin/${encodeURIComponent(payload.isin)}/snapshot/profile`
+      )
+      updates.profile_snapshot = JSON.stringify(snap)
     }
 
     if (row) {
@@ -315,23 +331,27 @@ class CalculaModuleService extends MedusaService({
       return { ok: false, error: "malformed versions envelope" }
     }
 
-    // Pull all four snapshots in parallel. News and editorial are best-
-    // effort — older Calcula deployments without the endpoints will 404
-    // and we swallow that to keep forceRefresh usable during a rollout.
-    const [statementsSnap, pricesSnap, newsSnap, editorialSnap] = await Promise.all([
-      callCalcula(
-        `/api/companies/by-isin/${encodeURIComponent(isin)}/snapshot/statements`
-      ),
-      callCalcula(
-        `/api/companies/by-isin/${encodeURIComponent(isin)}/snapshot/prices`
-      ),
-      callCalcula(
-        `/api/companies/by-isin/${encodeURIComponent(isin)}/snapshot/news`
-      ).catch(() => null),
-      callCalcula(
-        `/api/companies/by-isin/${encodeURIComponent(isin)}/snapshot/editorial`
-      ).catch(() => null),
-    ])
+    // Pull all five snapshots in parallel. News / editorial / profile are
+    // best-effort — older Calcula deployments without the endpoints will
+    // 404 and we swallow that to keep forceRefresh usable during a rollout.
+    const [statementsSnap, pricesSnap, newsSnap, editorialSnap, profileSnap] =
+      await Promise.all([
+        callCalcula(
+          `/api/companies/by-isin/${encodeURIComponent(isin)}/snapshot/statements`
+        ),
+        callCalcula(
+          `/api/companies/by-isin/${encodeURIComponent(isin)}/snapshot/prices`
+        ),
+        callCalcula(
+          `/api/companies/by-isin/${encodeURIComponent(isin)}/snapshot/news`
+        ).catch(() => null),
+        callCalcula(
+          `/api/companies/by-isin/${encodeURIComponent(isin)}/snapshot/editorial`
+        ).catch(() => null),
+        callCalcula(
+          `/api/companies/by-isin/${encodeURIComponent(isin)}/snapshot/profile`
+        ).catch(() => null),
+      ])
 
     const existing = await this.listCompanyRecords({ isin })
     const row = existing[0]
@@ -352,8 +372,12 @@ class CalculaModuleService extends MedusaService({
     if (typeof versions.editorial_version === "number") {
       updates.editorial_version = String(versions.editorial_version)
     }
+    if (typeof versions.profile_version === "number") {
+      updates.profile_version = String(versions.profile_version)
+    }
     if (newsSnap) updates.news_snapshot = JSON.stringify(newsSnap)
     if (editorialSnap) updates.editorial_snapshot = JSON.stringify(editorialSnap)
+    if (profileSnap) updates.profile_snapshot = JSON.stringify(profileSnap)
 
     if (row) {
       await this.updateCompanyRecords({ id: row.id, ...updates })
@@ -524,7 +548,7 @@ class CalculaModuleService extends MedusaService({
    */
   async getRawRow(
     isin: string,
-    kind: "prices" | "statements" | "news" | "editorial" | "both" = "both"
+    kind: "prices" | "statements" | "news" | "editorial" | "profile" | "both" = "both"
   ) {
     const select = [
       "id",
@@ -540,6 +564,10 @@ class CalculaModuleService extends MedusaService({
     if (kind === "prices" || kind === "both") select.push("price_snapshot")
     if (kind === "news") select.push("news_snapshot")
     if (kind === "editorial") select.push("editorial_snapshot")
+    if (kind === "profile") {
+      select.push("profile_snapshot")
+      select.push("profile_version")
+    }
 
     const results = await this.listCompanyRecords({ isin }, { select })
     const row = results[0]
@@ -591,6 +619,8 @@ class CalculaModuleService extends MedusaService({
       news_version: "0",
       editorial_snapshot: "",
       editorial_version: "0",
+      profile_snapshot: "",
+      profile_version: "0",
       content_updated_at: "",
       last_accessed_at: "",
       ...overrides,

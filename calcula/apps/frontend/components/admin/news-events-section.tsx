@@ -12,26 +12,59 @@ import {
   UPSERT_NEWS_EVENT_BULK_MUTATION,
   UPSERT_NEWS_EVENT_MUTATION
 } from '@/lib/queries';
-import type { NewsEventItem, PriceEventCategory } from '@/types/domain';
+import type { EventSentiment, NewsEventItem, PriceEventCategory } from '@/types/domain';
 
 type Category = PriceEventCategory;
+type Sentiment = EventSentiment;
 
 const CATEGORY_OPTIONS: { value: Category; label: string; hint: string }[] = [
-  { value: 'C', label: 'C — Corporate', hint: 'Earnings, dividend, split, M&A, fundraising' },
-  { value: 'N', label: 'N — News', hint: 'Media coverage, industry updates, rumors' },
-  { value: 'R', label: 'R — Regulatory', hint: 'SEBI notices, compliance, penalties' }
+  {
+    value: 'C',
+    label: 'C — Corporate action',
+    hint: 'Dividend, split, bonus, buyback, AGM, DRHP filing, rights issue, OFS — directly affects shares / shareholders'
+  },
+  {
+    value: 'E',
+    label: 'E — Business event',
+    hint: 'Acquisition, funding round, product launch, management change, reorganisation — affects value but not shares directly'
+  },
+  {
+    value: 'N',
+    label: 'N — News',
+    hint: 'Media coverage, analyst commentary, valuation markdowns/markups, rumours'
+  },
+  {
+    value: 'R',
+    label: 'R — Regulatory',
+    hint: 'SEBI / RBI notices, compliance filings outside shareholder actions'
+  }
 ];
 
 const CATEGORY_COLOR: Record<Category, string> = {
-  C: '#059669',
-  N: '#d97706',
-  R: '#e11d48'
+  C: '#059669', // emerald — shareholder-facing corporate actions
+  E: '#2563eb', // blue    — business events
+  N: '#d97706', // amber   — news
+  R: '#e11d48'  // rose    — regulatory
+};
+
+const SENTIMENT_OPTIONS: { value: Sentiment; label: string; color: string }[] = [
+  { value: 'G', label: 'Good (green)', color: '#059669' },
+  { value: 'B', label: 'Neutral (black)', color: '#0f172a' },
+  { value: 'R', label: 'Bad (red)', color: '#dc2626' }
+];
+
+const SENTIMENT_COLOR: Record<Sentiment, string> = {
+  G: '#059669',
+  R: '#dc2626',
+  B: '#0f172a'
 };
 
 type Draft = {
   id: string | null;
   occurredAt: string; // yyyy-MM-ddTHH:mm
   category: Category;
+  sentiment: Sentiment;
+  impactScore: number;
   title: string;
   body: string;
   sourceUrl: string;
@@ -69,6 +102,8 @@ export function NewsEventsSection({ companyId }: Props) {
     id: null,
     occurredAt: '',
     category: 'C',
+    sentiment: 'B',
+    impactScore: 3,
     title: '',
     body: '',
     sourceUrl: ''
@@ -105,6 +140,8 @@ export function NewsEventsSection({ companyId }: Props) {
       id: null,
       occurredAt: toLocalDatetime(new Date().toISOString()),
       category: 'C',
+      sentiment: 'B',
+      impactScore: 3,
       title: '',
       body: '',
       sourceUrl: ''
@@ -117,6 +154,8 @@ export function NewsEventsSection({ companyId }: Props) {
       id: row.id,
       occurredAt: toLocalDatetime(row.occurredAt),
       category: row.category,
+      sentiment: (row.sentiment ?? 'B') as Sentiment,
+      impactScore: row.impactScore ?? 3,
       title: row.title,
       body: row.body,
       sourceUrl: row.sourceUrl ?? ''
@@ -141,6 +180,8 @@ export function NewsEventsSection({ companyId }: Props) {
             companyId,
             occurredAt,
             category: draft.category,
+            sentiment: draft.sentiment,
+            impactScore: draft.impactScore,
             title: draft.title.trim(),
             body: draft.body.trim(),
             sourceUrl: draft.sourceUrl.trim() || null
@@ -417,6 +458,7 @@ export function NewsEventsSection({ companyId }: Props) {
                 </th>
                 <th>Date</th>
                 <th>Tag</th>
+                <th>Impact</th>
                 <th>Title</th>
                 <th>Source</th>
                 <th>Actions</th>
@@ -452,8 +494,13 @@ export function NewsEventsSection({ companyId }: Props) {
                       {row.category}
                     </span>
                   </td>
+                  <td style={{ textAlign: 'center', fontWeight: 700 }}>
+                    {row.impactScore != null ? '★'.repeat(row.impactScore) : '—'}
+                  </td>
                   <td style={{ maxWidth: 420, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <strong>{row.title}</strong>
+                    <strong style={{ color: SENTIMENT_COLOR[(row.sentiment ?? 'B') as Sentiment] }}>
+                      {row.title}
+                    </strong>
                   </td>
                   <td>
                     {row.sourceUrl ? (
@@ -518,6 +565,33 @@ export function NewsEventsSection({ companyId }: Props) {
                   {opt.label} — {opt.hint}
                 </option>
               ))}
+            </select>
+          </label>
+          <label className="col">
+            <span>Sentiment</span>
+            <select
+              value={draft.sentiment}
+              onChange={(e) => setDraft((p) => ({ ...p, sentiment: e.target.value as Sentiment }))}
+              style={{ color: SENTIMENT_COLOR[draft.sentiment], fontWeight: 700 }}
+            >
+              {SENTIMENT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value} style={{ color: opt.color }}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="col">
+            <span>Impact score (1–5)</span>
+            <select
+              value={draft.impactScore}
+              onChange={(e) => setDraft((p) => ({ ...p, impactScore: Number(e.target.value) }))}
+            >
+              <option value={1}>1 — Minor</option>
+              <option value={2}>2 — Routine</option>
+              <option value={3}>3 — Notable</option>
+              <option value={4}>4 — Major</option>
+              <option value={5}>5 — Foundational</option>
             </select>
           </label>
           <label className="col" style={{ gridColumn: '1 / -1' }}>

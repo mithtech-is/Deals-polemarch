@@ -63,7 +63,12 @@ const DEFAULT_FAQ_TEMPLATE: ReadonlyArray<{ question: string; answer: string }> 
     question: 'What documents do I need to invest in {name}?',
     answer:
       'PAN, Aadhaar (KYC), demat account details (BO ID + DP ID), bank account, and a recent cancelled cheque or bank statement.'
-  }
+  },
+  // Placeholder questions — admin fills later.
+  { question: "What was {name}'s latest funding round and valuation?", answer: '' },
+  { question: "What is {name}'s revenue growth and profitability trend?", answer: '' },
+  { question: 'What are the key products or services offered by {name}?', answer: '' },
+  { question: "Why should I invest in {name}'s unlisted shares right now?", answer: '' }
 ];
 
 type FaqItem = { question: string; answer: string };

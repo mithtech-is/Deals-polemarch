@@ -21,6 +21,18 @@ export class CompanyModel {
   @Field(() => String, { nullable: true })
   industry?: string | null;
 
+  @Field(() => String, { nullable: true })
+  activity?: string | null;
+
+  @Field(() => String, { nullable: true })
+  sectorId?: string | null;
+
+  @Field(() => String, { nullable: true })
+  industryId?: string | null;
+
+  @Field(() => String, { nullable: true })
+  activityId?: string | null;
+
   @Field()
   listingStatus!: string;
 
@@ -55,6 +67,26 @@ export class CreateCompanyInput {
   @IsOptional()
   @IsString()
   industry?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  activity?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  sectorId?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  industryId?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  activityId?: string;
 
   @Field({ nullable: true })
   @IsOptional()
@@ -98,6 +130,26 @@ export class UpdateCompanyInput {
   @IsOptional()
   @IsString()
   industry?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  activity?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  sectorId?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  industryId?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  activityId?: string;
 
   @Field({ nullable: true })
   @IsOptional()

@@ -8,6 +8,9 @@ const SECTIONS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "company-details", label: "Company details" },
   { id: "financials", label: "Financials" },
   { id: "key-takeaways", label: "Key takeaways" },
+  { id: "team", label: "Team" },
+  { id: "shareholders", label: "Shareholders" },
+  { id: "competitors", label: "Competitors" },
   { id: "timeline", label: "Timeline" },
   { id: "faq", label: "FAQ" },
 ];
@@ -40,23 +43,44 @@ export function DealPageToc() {
   }, []);
 
   // Track which section is currently in view.
+  //
+  // IntersectionObserver gets flaky with long sections (e.g. FAQ) because
+  // intersectionRatio drops for tall elements and shorter neighbours win
+  // the "most visible" race even after you've scrolled past them.
+  // Instead: compute the active section from scroll position. The active
+  // section is the LAST one whose top has scrolled past a probe line
+  // ~30% down the viewport. This matches what a user visually considers
+  // "the section I'm reading".
   useEffect(() => {
     if (present.length === 0) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Pick the most-visible entry that intersects.
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible[0]) setActiveId(visible[0].target.id);
-      },
-      { rootMargin: "-20% 0px -60% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
-    );
-    present.forEach((s) => {
-      const el = document.getElementById(s.id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
+    const PROBE_OFFSET = 0.3; // 30% from top of viewport
+
+    const recompute = () => {
+      const probeY = window.scrollY + window.innerHeight * PROBE_OFFSET;
+      let current = present[0].id;
+      for (const s of present) {
+        const el = document.getElementById(s.id);
+        if (!el) continue;
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        if (top <= probeY) current = s.id;
+        else break;
+      }
+      // Near bottom → force the last present section so FAQ always wins
+      // once the document can't scroll any further.
+      const nearBottom =
+        window.innerHeight + window.scrollY >=
+        document.documentElement.scrollHeight - 60;
+      if (nearBottom) current = present[present.length - 1].id;
+      setActiveId(current);
+    };
+
+    recompute();
+    window.addEventListener("scroll", recompute, { passive: true });
+    window.addEventListener("resize", recompute);
+    return () => {
+      window.removeEventListener("scroll", recompute);
+      window.removeEventListener("resize", recompute);
+    };
   }, [present]);
 
   if (present.length === 0) return null;
@@ -64,22 +88,22 @@ export function DealPageToc() {
   return (
     <nav
       aria-label="On this page"
-      className="hidden lg:block lg:sticky lg:top-8 self-start"
+      className="sticky top-24 z-20 bg-white rounded-2xl border border-slate-100 shadow-sm px-4"
     >
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
-        On this page
-      </p>
-      <ol className="space-y-1">
+      <ol
+        className="flex items-center gap-1 overflow-x-auto py-3"
+        style={{ scrollbarWidth: "none" }}
+      >
         {present.map((s) => {
           const isActive = s.id === activeId;
           return (
-            <li key={s.id}>
+            <li key={s.id} className="shrink-0">
               <a
                 href={`#${s.id}`}
-                className={`block pl-3 py-1 text-xs transition-colors border-l-2 ${
+                className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
                   isActive
-                    ? "text-emerald-700 font-bold border-emerald-700"
-                    : "text-slate-500 hover:text-slate-900 border-transparent"
+                    ? "bg-emerald-700 text-white"
+                    : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
                 {s.label}

@@ -12,7 +12,13 @@ const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
 
 // ── Shared types ─────────────────────────────────────────────
 
-export type SnapshotKind = "prices" | "statements" | "news" | "editorial" | "both";
+export type SnapshotKind =
+  | "prices"
+  | "statements"
+  | "news"
+  | "editorial"
+  | "profile"
+  | "both";
 
 export type PeriodHeader = {
   id: string;
@@ -35,9 +41,18 @@ export type StatementRow = {
   values: (number | null)[];
 };
 
-export type StatementBlock = { rows: StatementRow[] };
+export type ScaleUnit = "units" | "thousands" | "lakhs" | "crores" | "millions" | "billions";
 
-export type StatementKey = "balance_sheet" | "pnl" | "cashflow" | "derived";
+export type DisplayHint = {
+  currency: string;  // base currency (INR)
+  scale: ScaleUnit;  // storefront-chosen display scale
+  label: string;     // "All values in ₹ Crores"
+};
+
+export type StatementBlock = { rows: StatementRow[]; displayHint?: DisplayHint };
+
+// "derived" kept as a back-compat alias for older cached payloads.
+export type StatementKey = "balance_sheet" | "pnl" | "cashflow" | "change_in_equity" | "ratios_valuations" | "auxiliary_data" | "derived";
 
 export type StatementsGroup = {
   periods: PeriodHeader[];
@@ -49,6 +64,8 @@ export type StatementsSnapshot = {
   statementsVersion: number;
   contentUpdatedAt: string;
   currency: string;
+  valueIn?: Record<string, { currency: string; scale: ScaleUnit; source: string; missing: boolean }>;
+  valueInWarnings?: Array<{ periodId: string; statementType: string; reason: string }>;
   yearly: StatementsGroup;
   quarterly: StatementsGroup;
 };
@@ -59,7 +76,7 @@ export type StatementsSnapshot = {
  *   N = News (media coverage, industry updates, rumors)
  *   R = Regulatory (SEBI notices, compliance, penalties)
  */
-export type PriceEventCategory = "C" | "N" | "R";
+export type PriceEventCategory = "C" | "E" | "N" | "R";
 
 export type PriceEvent = {
   datetime: string;
@@ -77,11 +94,15 @@ export type PriceSnapshot = {
   events: PriceEvent[];
 };
 
+export type EventSentiment = "G" | "R" | "B";
+
 /** Editorial news event. Phase 3. */
 export type NewsEventItem = {
   id: string;
   occurredAt: string;
   category: PriceEventCategory;
+  sentiment?: EventSentiment | null;
+  impactScore?: number | null;
   title: string;
   body: string; // markdown
   sourceUrl: string | null;
@@ -104,6 +125,10 @@ export type EditorialSnapshot = {
     businessModel: string | null;
     competitiveMoat: string | null;
     risks: string | null;
+    financialInsights: string | null;
+    industryAnalysis: string | null;
+    sectorAnalysis: string | null;
+    activityAnalysis: string | null;
   } | null;
   prosCons: {
     pros: string;
@@ -111,6 +136,93 @@ export type EditorialSnapshot = {
   } | null;
   faq: {
     items: Array<{ question: string; answer: string }>;
+  } | null;
+  team: {
+    members: Array<{
+      name: string;
+      role: string;
+      since: string | null;
+      bio: string | null;
+      linkedinUrl: string | null;
+      photoUrl: string | null;
+    }>;
+  } | null;
+  shareholders: {
+    entries: Array<{
+      name: string;
+      type: string;
+      stakePercent: string | null;
+      since: string | null;
+      note: string | null;
+    }>;
+  } | null;
+  competitors: {
+    entries: Array<{
+      name: string;
+      isin: string | null;
+      link: string | null;
+      theirEdge: string | null;
+      ourEdge: string | null;
+      note: string | null;
+    }>;
+  } | null;
+};
+
+/** Phase 6 — company details + PE/VC valuation models. */
+export type CompanyDetailsData = {
+  logoUrl: string | null;
+  website: string | null;
+  linkedinUrl: string | null;
+  twitterUrl: string | null;
+  crunchbaseUrl: string | null;
+  founded: string | null;
+  incorporationCountry: string | null;
+  legalEntityType: string | null;
+  registeredOffice: string | null;
+  headquarters: string | null;
+  auditor: string | null;
+  panNumber: string | null;
+  rta: string | null;
+  depository: string | null;
+  employeeCount: number | null;
+  subsidiariesCount: number | null;
+  fiscalYearEnd: string | null;
+  shareType: string | null;
+  faceValue: string | null;
+  totalShares: string | null;
+  lotSize: number | null;
+  availabilityPercent: string | null;
+  fiftyTwoWeekHigh: string | null;
+  fiftyTwoWeekLow: string | null;
+  lastRoundType: string | null;
+  lastRoundDate: string | null;
+  lastRoundRaised: string | null;
+  lastRoundLead: string | null;
+  lastRoundValuation: string | null;
+};
+
+export type ValuationModelEntry = {
+  id: string;
+  methodType: string;
+  label: string;
+  weight: number;
+  impliedValueLow: number | null;
+  impliedValueBase: number | null;
+  impliedValueHigh: number | null;
+  notes: string | null;
+  payload: Record<string, unknown>;
+};
+
+export type ProfileSnapshot = {
+  isin: string;
+  profileVersion: number;
+  contentUpdatedAt: string;
+  details: CompanyDetailsData | null;
+  valuations: {
+    baseCurrency: string;
+    asOfDate: string | null;
+    summary: string | null;
+    models: ValuationModelEntry[];
   } | null;
 };
 
@@ -122,11 +234,13 @@ export type BundleResponse = {
   price_version: number;
   news_version: number;
   editorial_version: number;
+  profile_version: number;
   content_updated_at: string;
   statements: StatementsSnapshot | null;
   prices: PriceSnapshot | null;
   news: NewsSnapshot | null;
   editorial: EditorialSnapshot | null;
+  profile: ProfileSnapshot | null;
 };
 
 // ── Cache ────────────────────────────────────────────────────
@@ -285,7 +399,14 @@ export async function getSnapshot(
  * a fresh bundle. Clears all kinds.
  */
 export function invalidateSnapshot(isin: string) {
-  const kinds: SnapshotKind[] = ["prices", "statements", "news", "editorial", "both"];
+  const kinds: SnapshotKind[] = [
+    "prices",
+    "statements",
+    "news",
+    "editorial",
+    "profile",
+    "both",
+  ];
   for (const k of kinds) {
     memoryCache.delete(cacheKey(isin, k));
     if (typeof window !== "undefined") {

@@ -7,6 +7,10 @@ export const COMPANIES_QUERY = `
       cin
       sector
       industry
+      activity
+      sectorId
+      industryId
+      activityId
       listingStatus
       description
       country
@@ -23,6 +27,10 @@ export const COMPANY_QUERY = `
       cin
       sector
       industry
+      activity
+      sectorId
+      industryId
+      activityId
       listingStatus
       description
       country
@@ -50,6 +58,10 @@ export const UPDATE_COMPANY_MUTATION = `
       cin
       sector
       industry
+      activity
+      sectorId
+      industryId
+      activityId
       listingStatus
       description
       country
@@ -240,6 +252,10 @@ export const COMPANY_BY_ISIN_QUERY = `
       cin
       sector
       industry
+      activity
+      sectorId
+      industryId
+      activityId
       listingStatus
       description
       country
@@ -309,6 +325,8 @@ export const COMPANY_NEWS_EVENTS_QUERY = `
       companyId
       occurredAt
       category
+      sentiment
+      impactScore
       title
       body
       sourceUrl
@@ -324,6 +342,8 @@ export const UPSERT_NEWS_EVENT_MUTATION = `
       companyId
       occurredAt
       category
+      sentiment
+      impactScore
       title
       body
       sourceUrl
@@ -383,6 +403,10 @@ export const COMPANY_NARRATIVE_QUERY = `
       businessModel
       competitiveMoat
       risks
+      financialInsights
+      industryAnalysis
+      sectorAnalysis
+      activityAnalysis
       updatedAt
     }
   }
@@ -396,6 +420,10 @@ export const UPSERT_COMPANY_NARRATIVE_MUTATION = `
       businessModel
       competitiveMoat
       risks
+      financialInsights
+      industryAnalysis
+      sectorAnalysis
+      activityAnalysis
     }
   }
 `;
@@ -460,3 +488,181 @@ export const SEED_DEFAULT_FAQ_MUTATION = `
   }
 `;
 
+export const COMPANY_TEAM_QUERY = `
+  query CompanyTeam($companyId: String!) {
+    companyTeam(companyId: $companyId) {
+      companyId
+      members {
+        name
+        role
+        since
+        bio
+        linkedinUrl
+        photoUrl
+      }
+      updatedAt
+    }
+  }
+`;
+
+export const UPSERT_COMPANY_TEAM_MUTATION = `
+  mutation UpsertCompanyTeam($input: UpsertCompanyTeamInput!) {
+    upsertCompanyTeam(input: $input) {
+      companyId
+      members {
+        name
+        role
+        since
+        bio
+        linkedinUrl
+        photoUrl
+      }
+      updatedAt
+    }
+  }
+`;
+
+export const COMPANY_SHAREHOLDERS_QUERY = `
+  query CompanyShareholders($companyId: String!) {
+    companyShareholders(companyId: $companyId) {
+      companyId
+      entries {
+        name
+        type
+        stakePercent
+        since
+        note
+      }
+      updatedAt
+    }
+  }
+`;
+
+export const UPSERT_COMPANY_SHAREHOLDERS_MUTATION = `
+  mutation UpsertCompanyShareholders($input: UpsertCompanyShareholdersInput!) {
+    upsertCompanyShareholders(input: $input) {
+      companyId
+      entries {
+        name
+        type
+        stakePercent
+        since
+        note
+      }
+      updatedAt
+    }
+  }
+`;
+
+export const COMPANY_COMPETITORS_QUERY = `
+  query CompanyCompetitors($companyId: String!) {
+    companyCompetitors(companyId: $companyId) {
+      companyId
+      entries {
+        name
+        isin
+        link
+        theirEdge
+        ourEdge
+        note
+      }
+      updatedAt
+    }
+  }
+`;
+
+export const UPSERT_COMPANY_COMPETITORS_MUTATION = `
+  mutation UpsertCompanyCompetitors($input: UpsertCompanyCompetitorsInput!) {
+    upsertCompanyCompetitors(input: $input) {
+      companyId
+      entries {
+        name
+        isin
+        link
+        theirEdge
+        ourEdge
+        note
+      }
+      updatedAt
+    }
+  }
+`;
+
+
+// ── Profile: CompanyDetails + CompanyValuations (Phase 6) ─────
+
+const COMPANY_DETAILS_FIELDS = `
+  companyId
+  logoUrl
+  website
+  linkedinUrl
+  twitterUrl
+  crunchbaseUrl
+  founded
+  incorporationCountry
+  legalEntityType
+  registeredOffice
+  headquarters
+  auditor
+  panNumber
+  rta
+  depository
+  employeeCount
+  subsidiariesCount
+  fiscalYearEnd
+  shareType
+  faceValue
+  totalShares
+  lotSize
+  availabilityPercent
+  fiftyTwoWeekHigh
+  fiftyTwoWeekLow
+  lastRoundType
+  lastRoundDate
+  lastRoundRaised
+  lastRoundLead
+  lastRoundValuation
+  updatedAt
+`;
+
+export const COMPANY_DETAILS_QUERY = `
+  query CompanyDetails($companyId: String!) {
+    companyDetails(companyId: $companyId) {
+      ${COMPANY_DETAILS_FIELDS}
+    }
+  }
+`;
+
+export const UPSERT_COMPANY_DETAILS_MUTATION = `
+  mutation UpsertCompanyDetails($input: UpsertCompanyDetailsInput!) {
+    upsertCompanyDetails(input: $input) {
+      ${COMPANY_DETAILS_FIELDS}
+    }
+  }
+`;
+
+export const COMPANY_VALUATIONS_QUERY = `
+  query CompanyValuations($companyId: String!) {
+    companyValuations(companyId: $companyId) {
+      companyId
+      baseCurrency
+      asOfDate
+      summary
+      modelsJson
+      updatedAt
+    }
+  }
+`;
+
+export const UPSERT_COMPANY_VALUATIONS_MUTATION = `
+  mutation UpsertCompanyValuations($input: UpsertCompanyValuationsInput!) {
+    upsertCompanyValuations(input: $input) {
+      companyId
+      baseCurrency
+      asOfDate
+      summary
+      modelsJson
+      updatedAt
+    }
+  }
+`;

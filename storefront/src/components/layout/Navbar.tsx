@@ -8,6 +8,7 @@ import { useCart } from "@/context/CartContext";
 import { useUser } from "@/context/UserContext";
 import { getNavbarTrendingShares } from "@/lib/api/navbarTrending";
 import NotificationBell from "./NotificationBell";
+import { CurrencySwitcher } from "@/components/CurrencyContext";
 
 type NavbarTrendingShare = Awaited<ReturnType<typeof getNavbarTrendingShares>>[number];
 
@@ -121,6 +122,7 @@ const Navbar = () => {
 
                 <div className="flex items-center gap-4">
                     <div className="hidden lg:flex items-center gap-4">
+                        <CurrencySwitcher />
                         <NotificationBell />
                         <Link href="/cart" className="p-2 hover:bg-muted rounded-full transition-colors relative">
                             <ShoppingCart className="h-5 w-5" />
@@ -145,6 +147,7 @@ const Navbar = () => {
 
                     {/* Mobile Menu Button */}
                     <div className="lg:hidden flex items-center gap-4">
+                        <CurrencySwitcher />
                         <NotificationBell />
                         <Link href="/cart" className="p-2 transition-colors relative">
                             <ShoppingCart className="h-5 w-5" />

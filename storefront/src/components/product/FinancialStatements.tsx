@@ -8,6 +8,8 @@ import {
   type StatementKey,
   type StatementRow,
 } from "@/lib/snapshot";
+import { DEFAULT_HINT, formatValueWithHint, labelFor } from "@/lib/valueInFormat";
+import { useCurrency } from "@/components/CurrencyContext";
 
 type Mode = "yearly" | "quarterly";
 
@@ -15,26 +17,61 @@ const STATEMENT_LABELS: Record<StatementKey, string> = {
   pnl: "Profit & Loss",
   balance_sheet: "Balance Sheet",
   cashflow: "Cash Flow",
+  change_in_equity: "SOCIE",
+  ratios_valuations: "Financial Ratios",
+  auxiliary_data: "Auxiliary Data",
   derived: "Ratios",
 };
 
-const STATEMENT_ORDER: StatementKey[] = ["pnl", "balance_sheet", "cashflow"];
+const STATEMENT_ORDER: StatementKey[] = ["pnl", "balance_sheet", "cashflow", "change_in_equity", "ratios_valuations"];
 
-function formatValue(v: number | null): string {
-  if (v === null || v === undefined || Number.isNaN(v)) return "—";
-  const abs = Math.abs(v);
-  const sign = v < 0 ? "-" : "";
-  if (abs >= 1e7) return `${sign}${(abs / 1e7).toFixed(2)} Cr`;
-  if (abs >= 1e5) return `${sign}${(abs / 1e5).toFixed(2)} L`;
-  if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(1)} K`;
-  return `${sign}${abs.toFixed(2)}`;
+// Top 25 standard financial ratios to display in the Financial Ratios tab,
+// selected across liquidity, leverage, profitability, efficiency, valuation,
+// and per-share categories.
+const TOP_25_RATIO_CODES = new Set([
+  // Liquidity (4)
+  "current_ratio", "quick_ratio", "cash_ratio", "interest_coverage",
+  // Leverage (4)
+  "debt_to_equity", "debt_to_assets", "debt_to_ebitda", "net_debt_to_equity",
+  // Profitability (7)
+  "gross_margin", "ebitda_margin", "net_margin", "roa", "roe", "roce", "roic",
+  // Efficiency (4)
+  "asset_turnover", "inventory_turnover", "receivables_turnover", "cash_conversion_cycle",
+  // Valuation (5)
+  "pe_ratio", "pb_ratio", "ev_to_ebitda", "ev_to_sales", "fcf_yield",
+  // Per-share (1)
+  "eps_basic",
+]);
+
+function filterTop25Ratios(rows: StatementRow[]): StatementRow[] {
+  const result: StatementRow[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row.depth === 0) {
+      // Include section header only if it has at least one child in the top-25
+      let hasChild = false;
+      for (let j = i + 1; j < rows.length; j++) {
+        if (rows[j].depth === 0) break;
+        if (TOP_25_RATIO_CODES.has(rows[j].code)) { hasChild = true; break; }
+      }
+      if (hasChild) result.push(row);
+    } else if (TOP_25_RATIO_CODES.has(row.code)) {
+      result.push(row);
+    }
+  }
+  return result;
 }
+
+// formatValue has been replaced by formatValueWithHint (from @/lib/valueInFormat),
+// which honors the snapshot's per-statement displayHint and per-line-item
+// unit/percent/per-share semantics.
 
 type Props = {
   isin: string;
 };
 
 export function FinancialStatements({ isin }: Props) {
+  const { symbol: userSymbol } = useCurrency();
   const [snapshot, setSnapshot] = useState<StatementsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,8 +174,13 @@ export function FinancialStatements({ isin }: Props) {
   // (rows with no children). Only rows that own at least one such leaf become
   // collapsible. Sub-parents (e.g. Revenue under P&L) never get collapsed —
   // only the leaf line items beneath them do.
-  const rowsForMemo: StatementRow[] = useMemo(
-    () => (snapshot ? snapshot[mode].statements[statement].rows : []),
+  const rowsForMemo: StatementRow[] = useMemo(() => {
+    if (!snapshot) return [];
+    const rows = snapshot[mode].statements[statement]?.rows ?? [];
+    return statement === "ratios_valuations" ? filterTop25Ratios(rows) : rows;
+  }, [snapshot, mode, statement]);
+  const displayHint = useMemo(
+    () => snapshot?.[mode].statements[statement]?.displayHint ?? DEFAULT_HINT,
     [snapshot, mode, statement]
   );
   const directLeafChildren = useMemo(() => {
@@ -162,12 +204,18 @@ export function FinancialStatements({ isin }: Props) {
     return map;
   }, [rowsForMemo]);
 
-  // Default state: collapse every parent that owns leaf children, so the
-  // initial render shows only the section headers. Re-runs whenever the rows
-  // change (mode / statement / isin switch).
+  // Default state: for most statements, collapse every parent that owns
+  // leaf children so the initial render shows only section headers. The
+  // Financial Ratios tab is the exception — ratios are the whole point of
+  // the tab so every category is expanded by default. Re-runs whenever
+  // the rows change (mode / statement / isin switch).
   useEffect(() => {
-    setCollapsed(new Set(directLeafChildren.keys()));
-  }, [directLeafChildren]);
+    if (statement === "ratios_valuations") {
+      setCollapsed(new Set());
+    } else {
+      setCollapsed(new Set(directLeafChildren.keys()));
+    }
+  }, [directLeafChildren, statement]);
 
   const hiddenRowIdx = useMemo(() => {
     const hidden = new Set<number>();
@@ -190,14 +238,28 @@ export function FinancialStatements({ isin }: Props) {
     return visiblePeriodIndices.map((i) => all[i]);
   }, [snapshot, mode, visiblePeriodIndices]);
 
+  // Only show tabs whose statement block exists and has at least one row.
+  const visibleStatements = useMemo(() => {
+    if (!snapshot) return STATEMENT_ORDER;
+    return STATEMENT_ORDER.filter((s) => {
+      const rows = snapshot[mode].statements[s]?.rows ?? [];
+      return rows.length > 0;
+    });
+  }, [snapshot, mode]);
+
+  // If the active tab is no longer present (e.g. switching ISIN), reset to first.
+  useEffect(() => {
+    if (!visibleStatements.includes(statement)) {
+      setStatement(visibleStatements[0] ?? "pnl");
+    }
+  }, [visibleStatements, statement]);
+
   const projectedRows = useMemo(() => {
-    if (!snapshot) return [] as StatementRow[];
-    const rows = snapshot[mode].statements[statement].rows;
-    return rows.map((row) => ({
+    return rowsForMemo.map((row) => ({
       ...row,
       values: visiblePeriodIndices.map((i) => row.values[i] ?? null),
     }));
-  }, [snapshot, mode, statement, visiblePeriodIndices]);
+  }, [rowsForMemo, visiblePeriodIndices]);
 
   if (loading) {
     return (
@@ -344,7 +406,7 @@ export function FinancialStatements({ isin }: Props) {
       </div>
 
       <div className="flex gap-2 mb-4 border-b border-slate-100">
-        {STATEMENT_ORDER.map((s) => (
+        {visibleStatements.map((s) => (
           <button
             key={s}
             onClick={() => setStatement(s)}
@@ -366,11 +428,16 @@ export function FinancialStatements({ isin }: Props) {
             : `No ${mode} ${STATEMENT_LABELS[statement].toLowerCase()} data yet.`}
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="-mx-6 px-6 overflow-x-auto">
+          <div className="flex items-center justify-end pb-2 pr-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              {labelFor(displayHint, userSymbol)}
+            </span>
+          </div>
+          <table className="min-w-full w-max text-sm">
             <thead className="border-b border-slate-100">
               <tr>
-                <th className="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider py-2 pr-4">
+                <th className="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider py-2 pr-4 sticky left-0 bg-white z-10 min-w-[14rem]">
                   Line Item
                 </th>
                 {periods.map((p) => (
@@ -391,10 +458,10 @@ export function FinancialStatements({ isin }: Props) {
                 return (
                   <tr key={row.lineItemId} className="border-b border-slate-50 last:border-b-0">
                     <td
-                      className={`py-2 pr-4 ${
+                      className={`py-2 pr-4 sticky left-0 bg-white z-10 min-w-[14rem] whitespace-nowrap ${
                         row.isCalculated ? "font-bold text-slate-900" : "text-slate-700"
                       }`}
-                      style={{ paddingLeft: `${row.depth * 14}px` }}
+                      style={{ paddingLeft: `${8 + row.depth * 14}px` }}
                     >
                       {isParent ? (
                         <button
@@ -414,16 +481,27 @@ export function FinancialStatements({ isin }: Props) {
                         row.name
                       )}
                     </td>
-                    {row.values.map((v, i) => (
-                      <td
-                        key={`${row.lineItemId}:${i}`}
-                        className={`text-right py-2 px-3 tabular-nums whitespace-nowrap ${
-                          row.isCalculated ? "font-bold text-slate-900" : "text-slate-700"
-                        }`}
-                      >
-                        {formatValue(v)}
-                      </td>
-                    ))}
+                    {row.values.map((v, i) => {
+                      // In the Financial Ratios tab, category parent rows
+                      // (Liquidity / Leverage / Profitability / …) have no
+                      // meaningful numeric value — they're pure headers.
+                      // Suppress the em-dash placeholder for those rows so
+                      // the category headers read cleanly.
+                      const suppressValue =
+                        statement === "ratios_valuations" && isParent;
+                      return (
+                        <td
+                          key={`${row.lineItemId}:${i}`}
+                          className={`text-right py-2 px-3 tabular-nums whitespace-nowrap ${
+                            row.isCalculated ? "font-bold text-slate-900" : "text-slate-700"
+                          }`}
+                        >
+                          {suppressValue
+                            ? ""
+                            : formatValueWithHint(v, row.code, displayHint)}
+                        </td>
+                      );
+                    })}
                   </tr>
                 );
               })}

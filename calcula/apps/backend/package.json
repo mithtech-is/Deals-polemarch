@@ -12,7 +12,15 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "mark-required": "tsx prisma/mark-required.ts",
     "seed:default-faqs": "tsx prisma/seed-default-faqs.ts",
-    "seed:api-prices": "tsx prisma/seed-api-prices.ts"
+    "seed:api-prices": "tsx prisma/seed-api-prices.ts",
+    "seed:api-events": "tsx prisma/seed-api-events.ts",
+    "seed:api-team-shareholders": "tsx prisma/seed-api-team-shareholders.ts",
+    "seed:api-competitors": "tsx prisma/seed-api-competitors.ts",
+    "seed:api-financials": "tsx prisma/seed-api-financials.ts",
+    "seed:auxiliary-data": "tsx prisma/seed-auxiliary-data.ts",
+    "expand-ratios": "tsx prisma/expand-ratios.ts",
+    "backfill-period-end-prices": "tsx prisma/backfill-period-end-prices.ts",
+    "recalc-derived": "tsx prisma/recalc-derived.ts"
   },
   "dependencies": {
     "@as-integrations/express5": "^1.1.2",

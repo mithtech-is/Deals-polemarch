@@ -43,6 +43,9 @@ export const CompanyRecord = model.define("company_record", {
   // Phase 4/5 — bundled editorial blob (pros/cons + company overview).
   editorial_snapshot: model.text(),
   editorial_version: model.text(),
+  // Phase 6 — profile bundle (company details + valuation models).
+  profile_snapshot: model.text(),
+  profile_version: model.text(),
   content_updated_at: model.text(),
   last_accessed_at: model.text(),
 })

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { gql } from '@/lib/api';
 import { useAuth } from '@/components/auth-context';
 import { Modal } from '@/components/ui/modal';
+import { ValueInPicker, type ScaleUnit } from '@/components/admin/value-in-picker';
 import { formatReadOnlyFinancialValue, parseFinancialInput } from '@/lib/financial-number';
 import {
   COMPANY_MULTI_PERIOD_FINANCIALS_QUERY,
@@ -18,7 +19,7 @@ import type {
   FinancialValue
 } from '@/types/domain';
 
-type StatementType = 'balance_sheet' | 'pnl' | 'cashflow' | 'derived';
+type StatementType = 'balance_sheet' | 'pnl' | 'cashflow' | 'change_in_equity' | 'ratios_valuations';
 type DraftsByPeriod = Record<string, Record<string, string>>;
 // Fields that admins can manually override on the Derived tab.
 //
@@ -99,6 +100,18 @@ type Props = {
 export function PeriodFinancialEditor({ companyId, periods }: Props) {
   const { token } = useAuth();
   const [selectedPeriodIds, setSelectedPeriodIds] = useState<string[]>([]);
+  const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
+  const periodDropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!periodDropdownOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!periodDropdownRef.current?.contains(e.target as Node)) {
+        setPeriodDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [periodDropdownOpen]);
   const [statementType, setStatementType] = useState<StatementType>('pnl');
   const [lineItems, setLineItems] = useState<FinancialLineItem[]>([]);
   const [values, setValues] = useState<FinancialValue[]>([]);
@@ -108,6 +121,7 @@ export function PeriodFinancialEditor({ companyId, periods }: Props) {
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [activeCellKey, setActiveCellKey] = useState<string | null>(null);
   const [formulaModal, setFormulaModal] = useState<{ name: string; formula: string } | null>(null);
+  const [valueInByPeriod, setValueInByPeriod] = useState<Record<string, { currency: string | null; scale: ScaleUnit | null; missing: boolean }>>({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -125,7 +139,7 @@ export function PeriodFinancialEditor({ companyId, periods }: Props) {
         if (!pA || !pB) return 0;
         return comparePeriodsAsc(pA, pB);
       });
-      return sortedPeriods.slice(-2).map((p) => p.id);
+      return sortedPeriods.map((p) => p.id);
     });
   }, [periods, sortedPeriods, periodById]);
 
@@ -174,6 +188,41 @@ export function PeriodFinancialEditor({ companyId, periods }: Props) {
     };
   }, [companyId, selectedPeriodIds, statementType, token]);
 
+  // Fetch per-period ValueIn for the current statement tab.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!selectedPeriodIds.length) {
+        setValueInByPeriod({});
+        return;
+      }
+      try {
+        const res = await gql<{
+          periodsValueIn: Array<{ periodId: string; currency: string; scale: ScaleUnit; missing: boolean }>;
+        }>(
+          `query PeriodsValueIn($periodIds: [String!]!, $statementType: String!) {
+             periodsValueIn(periodIds: $periodIds, statementType: $statementType) {
+               periodId currency scale source missing
+             }
+           }`,
+          { periodIds: selectedPeriodIds, statementType },
+          token
+        );
+        if (cancelled) return;
+        const map: Record<string, { currency: string | null; scale: ScaleUnit | null; missing: boolean }> = {};
+        for (const row of res.periodsValueIn ?? []) {
+          map[row.periodId] = { currency: row.currency, scale: row.scale, missing: row.missing };
+        }
+        setValueInByPeriod(map);
+      } catch {
+        /* non-fatal */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPeriodIds, statementType, token]);
+
   const selectedPeriods = useMemo(
     () =>
       selectedPeriodIds
@@ -218,7 +267,7 @@ export function PeriodFinancialEditor({ companyId, periods }: Props) {
 
   const isEditableItem = (item: FinancialLineItem) =>
     mappedParentIds.has(item.id) ||
-    (!item.isCalculated && (statementType !== 'derived' || DERIVED_MANUAL_INPUT_CODES.has(item.code)));
+    (!item.isCalculated && (statementType !== 'ratios_valuations' || DERIVED_MANUAL_INPUT_CODES.has(item.code)));
 
   const editableRows = useMemo(
     () => flatItems.filter((item) => isEditableItem(item)),
@@ -699,23 +748,61 @@ export function PeriodFinancialEditor({ companyId, periods }: Props) {
             <option value="balance_sheet">Balance Sheet</option>
             <option value="pnl">P&amp;L</option>
             <option value="cashflow">Cashflow</option>
-            <option value="derived">Derived</option>
+            <option value="change_in_equity">SOCIE</option>
+            <option value="ratios_valuations">Ratios &amp; Valuations</option>
           </select>
         </label>
         <div className="col">
           <span>Periods</span>
           {sortedPeriods.length > 0 ? (
-            <div className="period-picker">
-              {sortedPeriods.map((period) => (
-                <label key={period.id} className="row period-option">
-                  <input
-                    type="checkbox"
-                    checked={selectedPeriodIds.includes(period.id)}
-                    onChange={() => togglePeriod(period.id)}
-                  />
-                  {periodLabel(period)}
-                </label>
-              ))}
+            <div className="period-picker-dropdown" ref={periodDropdownRef}>
+              <button
+                type="button"
+                className="period-picker-trigger"
+                onClick={() => setPeriodDropdownOpen((v) => !v)}
+                aria-expanded={periodDropdownOpen}
+              >
+                <span>
+                  Periods:{' '}
+                  {selectedPeriodIds.length === 0
+                    ? 'None'
+                    : selectedPeriodIds.length === sortedPeriods.length
+                    ? `All (${sortedPeriods.length})`
+                    : `${selectedPeriodIds.length} of ${sortedPeriods.length}`}
+                </span>
+                <span className="caret">▾</span>
+              </button>
+              {periodDropdownOpen && (
+              <div className="period-picker">
+                <div className="period-picker-actions">
+                  <button
+                    type="button"
+                    className="linklike linklike-primary"
+                    onClick={() => setSelectedPeriodIds(sortedPeriods.map((p) => p.id))}
+                  >
+                    Select all
+                  </button>
+                  <button
+                    type="button"
+                    className="linklike"
+                    onClick={() => setSelectedPeriodIds([])}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="period-picker-divider" />
+                {[...sortedPeriods].reverse().map((period) => (
+                  <label key={period.id} className="row period-option">
+                    <input
+                      type="checkbox"
+                      checked={selectedPeriodIds.includes(period.id)}
+                      onChange={() => togglePeriod(period.id)}
+                    />
+                    {periodLabel(period)}
+                  </label>
+                ))}
+              </div>
+              )}
             </div>
           ) : (
             <div className="period-empty">
@@ -752,20 +839,30 @@ export function PeriodFinancialEditor({ companyId, periods }: Props) {
         <p className="muted page-subtitle">Select at least one period to enter financial values.</p>
       )}
 
-      <div className="row" style={{ flexWrap: 'wrap' }}>
-        {selectedPeriods.map((period) => (
-          <span className="chip" key={period.id}>
-            {periodLabel(period)}
-            <button
-              className="chip-close"
-              onClick={() => togglePeriod(period.id)}
-              aria-label={`Remove ${periodLabel(period)}`}
-            >
-              x
-            </button>
-          </span>
-        ))}
-      </div>
+      {selectedPeriods.length > 0 && (
+        <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+          {selectedPeriods.map((period) => {
+            const vi = valueInByPeriod[period.id];
+            return (
+              <ValueInPicker
+                key={`vi-${period.id}`}
+                periodId={period.id}
+                statementType={statementType}
+                label={periodLabel(period)}
+                currency={vi?.currency ?? null}
+                scale={vi?.scale ?? null}
+                missing={vi?.missing ?? true}
+                onChange={(next) =>
+                  setValueInByPeriod((prev) => ({
+                    ...prev,
+                    [period.id]: { currency: next.currency, scale: next.scale, missing: false }
+                  }))
+                }
+              />
+            );
+          })}
+        </div>
+      )}
 
       <div className="table-wrap">
         <table className="table-wide">

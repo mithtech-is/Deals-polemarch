@@ -17,7 +17,9 @@ enum StatementType {
   balance_sheet
   pnl
   cashflow
-  derived
+  change_in_equity
+  ratios_valuations
+  auxiliary_data
 
   @@map("statement_type")
 }
@@ -27,6 +29,17 @@ enum MetricValueSource {
   derived
 
   @@map("metric_value_source")
+}
+
+enum ScaleUnit {
+  units
+  thousands
+  lakhs
+  crores
+  millions
+  billions
+
+  @@map("scale_unit")
 }
 
 model PlatformUser {
@@ -45,8 +58,15 @@ model Company {
   name               String
   isin               String    @unique
   cin                String?
+  // Free-text sector/industry kept for backwards compatibility. New edits
+  // should populate the structured FKs below (TRBC hierarchy) and let the
+  // free-text columns fall out naturally on write.
   sector             String?
   industry           String?
+  activity           String?
+  sectorId           String?   @map("sector_id") @db.Uuid
+  industryId         String?   @map("industry_id") @db.Uuid
+  activityId         String?   @map("activity_id") @db.Uuid
   listingStatus      String    @default("unlisted") @map("listing_status")
   country            String    @default("IN")
   description        String?
@@ -58,6 +78,9 @@ model Company {
   priceVersion       Int       @default(0) @map("price_version")
   newsVersion        Int       @default(0) @map("news_version")
   editorialVersion   Int       @default(0) @map("editorial_version")
+  profileVersion     Int       @default(0) @map("profile_version")
+  defaultCurrency    String    @default("INR") @map("default_currency") @db.Char(3)
+  defaultScale       ScaleUnit @default(crores) @map("default_scale")
   contentUpdatedAt   DateTime  @default(now()) @map("content_updated_at") @db.Timestamptz(6)
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -69,10 +92,75 @@ model Company {
   overview       CompanyOverview?
   prosCons       ProsCons?
   faq            CompanyFaq?
+  team           CompanyTeam?
+  shareholders   CompanyShareholders?
+  competitors    CompanyCompetitors?
+  details        CompanyDetails?
+  valuations     CompanyValuations?
+  trbcSector     TrbcSector?   @relation(fields: [sectorId],   references: [id], onDelete: SetNull)
+  trbcIndustry   TrbcIndustry? @relation(fields: [industryId], references: [id], onDelete: SetNull)
+  trbcActivity   TrbcActivity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
 
   @@index([name])
   @@index([contentUpdatedAt])
+  @@index([sectorId])
+  @@index([industryId])
+  @@index([activityId])
   @@map("companies")
+}
+
+/// TRBC (The Refinitiv Business Classification) taxonomy.
+/// Three-level hierarchy used for industry classification on each company.
+///   Sector  (TRBC Economic Sector)
+///     └── Industry  (TRBC Business Sector)
+///           └── Activity  (TRBC Industry Group)
+model TrbcSector {
+  id         String         @id @default(uuid()) @db.Uuid
+  name       String         @unique
+  code       String?        @unique
+  sortOrder  Int            @default(0) @map("sort_order")
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  industries TrbcIndustry[]
+  companies  Company[]
+
+  @@map("trbc_sectors")
+}
+
+model TrbcIndustry {
+  id         String         @id @default(uuid()) @db.Uuid
+  sectorId   String         @map("sector_id") @db.Uuid
+  name       String
+  code       String?        @unique
+  sortOrder  Int            @default(0) @map("sort_order")
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sector     TrbcSector     @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  activities TrbcActivity[]
+  companies  Company[]
+
+  @@unique([sectorId, name])
+  @@index([sectorId])
+  @@map("trbc_industries")
+}
+
+model TrbcActivity {
+  id          String       @id @default(uuid()) @db.Uuid
+  industryId  String       @map("industry_id") @db.Uuid
+  name        String
+  code        String?      @unique
+  sortOrder   Int          @default(0) @map("sort_order")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  industry   TrbcIndustry  @relation(fields: [industryId], references: [id], onDelete: Cascade)
+  companies  Company[]
+
+  @@unique([industryId, name])
+  @@index([industryId])
+  @@map("trbc_activities")
 }
 
 model CompanyPriceHistory {
@@ -106,11 +194,14 @@ model FinancialPeriod {
   periodStart   DateTime @map("period_start") @db.Date
   periodEnd     DateTime @map("period_end") @db.Date
   isAudited     Boolean  @default(false) @map("is_audited")
+  currency      String?  @db.Char(3)
+  scale         ScaleUnit?
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company Company                   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   values  FinancialMetric[]
+  statementValueIns PeriodStatementValueIn[]
 
   @@unique([companyId, fiscalYear, fiscalQuarter])
   @@index([companyId, fiscalYear, fiscalQuarter])
@@ -195,6 +286,10 @@ model NewsEvent {
   occurredAt  DateTime @map("occurred_at") @db.Timestamptz(6)
   // 'C' | 'N' | 'R' — same vocabulary as CompanyPriceHistory.category.
   category    String   @db.VarChar(1)
+  // 'G' | 'R' | 'B' | null — drives storefront/admin title text colour.
+  sentiment   String?  @db.VarChar(1)
+  // 1..5, editor-assigned importance. Drives the storefront impact filter.
+  impactScore Int?     @map("impact_score")
   title       String
   body        String   @db.Text // markdown
   sourceUrl   String?  @map("source_url")
@@ -216,6 +311,10 @@ model CompanyOverview {
   businessModel   String?  @map("business_model") @db.Text
   competitiveMoat String?  @map("competitive_moat") @db.Text
   risks           String?  @db.Text
+  financialInsights String? @map("financial_insights") @db.Text // raw HTML edited by analysts
+  industryAnalysis  String? @map("industry_analysis")  @db.Text
+  sectorAnalysis    String? @map("sector_analysis")    @db.Text
+  activityAnalysis  String? @map("activity_analysis")  @db.Text
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -252,4 +351,167 @@ model CompanyFaq {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("company_faqs")
+}
+
+/// Author-curated key management team. One row per company, `members`
+/// is a JSON array of `{ name, role, since, bio, linkedinUrl, photoUrl }`.
+/// Folded into the `editorial` snapshot.
+model CompanyTeam {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @unique @map("company_id") @db.Uuid
+  members   Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_teams")
+}
+
+/// Author-curated competitors list with comparative commentary. One row
+/// per company, `entries` is a JSON array of
+/// `{ name, isin, link, theirEdge, ourEdge, note }`. Folded into the
+/// `editorial` snapshot.
+model CompanyCompetitors {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @unique @map("company_id") @db.Uuid
+  entries   Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_competitors")
+}
+
+/// Author-curated major shareholders. One row per company, `entries` is
+/// a JSON array of `{ name, type, stakePercent, since, note }`. Folded
+/// into the `editorial` snapshot.
+model CompanyShareholders {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @unique @map("company_id") @db.Uuid
+  entries   Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_shareholders")
+}
+
+/// Static corporate metadata curated in Calcula. Fields mirror what the
+/// Polemarch storefront deal page renders. Bundled into the `profile`
+/// snapshot alongside CompanyValuations.
+model CompanyDetails {
+  id                   String   @id @default(uuid()) @db.Uuid
+  companyId            String   @unique @map("company_id") @db.Uuid
+
+  // Identity & branding
+  logoUrl              String?  @map("logo_url")
+  website              String?
+  linkedinUrl          String?  @map("linkedin_url")
+  twitterUrl           String?  @map("twitter_url")
+  crunchbaseUrl        String?  @map("crunchbase_url")
+
+  // Corporate
+  founded              String?
+  incorporationCountry String?  @map("incorporation_country")
+  legalEntityType      String?  @map("legal_entity_type")
+  registeredOffice     String?  @map("registered_office")
+  headquarters         String?
+  auditor              String?
+  panNumber            String?  @map("pan_number")
+  rta                  String?
+  depository           String?
+  employeeCount        Int?     @map("employee_count")
+  subsidiariesCount    Int?     @map("subsidiaries_count")
+  fiscalYearEnd        String?  @map("fiscal_year_end")
+
+  // Share structure
+  shareType            String?  @map("share_type")
+  faceValue            Decimal? @map("face_value") @db.Decimal(18, 4)
+  totalShares          String?  @map("total_shares")
+  lotSize              Int?     @map("lot_size")
+  availabilityPercent  Decimal? @map("availability_percent") @db.Decimal(6, 2)
+
+  // Market data
+  fiftyTwoWeekHigh     Decimal? @map("fifty_two_week_high") @db.Decimal(18, 4)
+  fiftyTwoWeekLow      Decimal? @map("fifty_two_week_low") @db.Decimal(18, 4)
+
+  // Latest funding round
+  lastRoundType        String?  @map("last_round_type")
+  lastRoundDate        String?  @map("last_round_date")
+  lastRoundRaised      String?  @map("last_round_raised")
+  lastRoundLead        String?  @map("last_round_lead")
+  lastRoundValuation   String?  @map("last_round_valuation")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_details")
+}
+
+/// Extensive valuation models curated by PE/VC analysts. `models` is a
+/// discriminated-union JSON array; each entry carries methodType, inputs,
+/// implied value range, weight, and optional notes. Bundled into the
+/// `profile` snapshot.
+model CompanyValuations {
+  id           String    @id @default(uuid()) @db.Uuid
+  companyId    String    @unique @map("company_id") @db.Uuid
+  baseCurrency String    @default("INR") @map("base_currency")
+  asOfDate     DateTime? @map("as_of_date")
+  summary      String?
+  models       Json      @default("[]")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_valuations")
+}
+
+/// Per (period, statement_type) override for Value In (currency + scale).
+/// Resolution order at read time:
+///   PeriodStatementValueIn → FinancialPeriod → Company → global default (INR, Crores).
+model PeriodStatementValueIn {
+  id            String        @id @default(uuid()) @db.Uuid
+  periodId      String        @map("period_id") @db.Uuid
+  statementType StatementType @map("statement_type")
+  currency      String?       @db.Char(3)
+  scale         ScaleUnit?
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  period FinancialPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+
+  @@unique([periodId, statementType])
+  @@map("period_statement_value_in")
+}
+
+/// FX rate table. Latest row where `asOf <= periodEnd` wins. Missing → 1.0 + flag.
+model CurrencyRate {
+  id        String   @id @default(uuid()) @db.Uuid
+  fromCcy   String   @map("from_ccy") @db.Char(3)
+  toCcy     String   @map("to_ccy") @db.Char(3)
+  rate      Decimal  @db.Decimal(20, 10)
+  asOf      DateTime @map("as_of") @db.Date
+  source    String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([fromCcy, toCcy, asOf])
+  @@index([fromCcy, toCcy, asOf(sort: Desc)])
+  @@map("currency_rates")
+}
+
+/// Singleton-style key-value store for site-wide settings curated from the
+/// Calcula admin (default currency, default display scale, etc.). One row
+/// per key; idempotent upserts from the SiteSettingsService.
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  @@map("site_settings")
 }

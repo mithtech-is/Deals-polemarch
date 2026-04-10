@@ -10,6 +10,7 @@ import { ArrowLeft, Info, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { useUser } from "@/context/UserContext";
+import { useCurrency } from "@/components/CurrencyContext";
 import {
     getCompanyFinancials,
     getOverviewValue,
@@ -19,10 +20,16 @@ import {
 } from "@/lib/calcula";
 import { PriceChart } from "@/components/product/PriceChart";
 import { FinancialStatements } from "@/components/product/FinancialStatements";
-import { ProsConsPanel } from "@/components/product/ProsConsPanel";
 import { CompanyOverviewPanel } from "@/components/product/CompanyOverviewPanel";
+import { ProsConsPanel } from "@/components/product/ProsConsPanel";
+import { EditorialHtmlPanels } from "@/components/product/EditorialHtmlPanels";
 import { EventTimeline } from "@/components/product/EventTimeline";
 import { FaqPanel } from "@/components/product/FaqPanel";
+import { TeamPanel } from "@/components/product/TeamPanel";
+import { ShareholdersPanel } from "@/components/product/ShareholdersPanel";
+import { CompetitorsPanel } from "@/components/product/CompetitorsPanel";
+import { CompanyDetailsGrid } from "@/components/product/CompanyDetailsGrid";
+import { ValuationPanel } from "@/components/product/ValuationPanel";
 import { DealPageToc } from "@/components/product/DealPageToc";
 import { formatPrice, formatPriceForSchema } from "@/lib/format";
 
@@ -35,6 +42,7 @@ export default function DealDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const { addItem } = useCart();
     const { user } = useUser();
+    const { symbol: currencySymbol } = useCurrency();
 
     useEffect(() => {
         const fetchDeal = async () => {
@@ -302,9 +310,9 @@ export default function DealDetailPage() {
                                 {renderBuyBox()}
                             </div>
 
-                            <div className="lg:grid lg:grid-cols-[180px_1fr] lg:gap-8">
-                                <DealPageToc />
-                                <div className="space-y-8 min-w-0">
+                            <DealPageToc />
+
+                            <div className="space-y-8 min-w-0 pt-6">
 
                             {deal.isin && (
                                 <section id="price">
@@ -312,11 +320,21 @@ export default function DealDetailPage() {
                                 </section>
                             )}
 
-                            {deal.isin && (
-                                <section id="about">
+                            <section id="about" className="pt-6">
+                                {deal.isin ? (
                                     <CompanyOverviewPanel isin={deal.isin} />
-                                </section>
-                            )}
+                                ) : (
+                                    <>
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="h-6 w-1 bg-emerald-700 rounded-full"></div>
+                                            <h3 className="text-xl font-bold">Company Overview</h3>
+                                        </div>
+                                        <div className="text-slate-600 text-sm leading-relaxed prose prose-slate max-w-none">
+                                            {deal.description || deal.summary || "-"}
+                                        </div>
+                                    </>
+                                )}
+                            </section>
 
                             <div id="company-details" className="pt-6">
                                 <div className="flex items-center gap-3 mb-6">
@@ -339,7 +357,7 @@ export default function DealDetailPage() {
                                         { label: "Debt to Equity", value: financials?.debt_to_equity || deal.debtToEquity || "N/A" },
                                         { label: "52 Week High", value: (() => {
                                             const v = financials?.fifty_two_week_high || deal.fiftyTwoWeekHigh;
-                                            return v ? `₹ ${v}` : "-";
+                                            return v ? `${currencySymbol} ${v}` : "-";
                                         })() },
                                         { label: "ROE (%)", value: (() => {
                                             const liveRoe = getRatioValue(financials?.ratios ?? null, "roe");
@@ -348,13 +366,13 @@ export default function DealDetailPage() {
                                         })() },
                                         { label: "52 Week Low", value: (() => {
                                             const v = financials?.fifty_two_week_low || deal.fiftyTwoWeekLow;
-                                            return v ? `₹ ${v}` : "-";
+                                            return v ? `${currencySymbol} ${v}` : "-";
                                         })() },
                                         { label: "Book Value", value: financials?.book_value || deal.bookValue || "N/A" },
                                         { label: "Depository", value: financials?.depository || deal.depository || "-" },
                                         { label: "Face Value", value: (() => {
                                             const v = financials?.face_value || deal.faceValue;
-                                            return v ? `₹ ${v}` : "-";
+                                            return v ? `${currencySymbol} ${v}` : "-";
                                         })() },
                                         { label: "PAN Number", value: financials?.pan_number || deal.panNumber || "N/A" },
                                         { label: "Total Shares", value: (() => {
@@ -373,6 +391,7 @@ export default function DealDetailPage() {
                                             <span className="text-sm font-bold text-slate-900">{item.value}</span>
                                         </div>
                                     ))}
+                                    {deal.isin && <CompanyDetailsGrid isin={deal.isin} />}
                                 </div>
                             </div>
 
@@ -437,8 +456,33 @@ export default function DealDetailPage() {
 
                             {deal.isin && <FinancialStatements isin={deal.isin} />}
                             {deal.isin && (
+                                <section id="editorial-financial">
+                                    <EditorialHtmlPanels isin={deal.isin} only="financial" />
+                                </section>
+                            )}
+                            {deal.isin && (
+                                <section id="valuations">
+                                    <ValuationPanel isin={deal.isin} />
+                                </section>
+                            )}
+                            {deal.isin && (
                                 <section id="key-takeaways">
                                     <ProsConsPanel isin={deal.isin} />
+                                </section>
+                            )}
+                            {deal.isin && (
+                                <section id="team">
+                                    <TeamPanel isin={deal.isin} />
+                                </section>
+                            )}
+                            {deal.isin && (
+                                <section id="shareholders">
+                                    <ShareholdersPanel isin={deal.isin} />
+                                </section>
+                            )}
+                            {deal.isin && (
+                                <section id="competitors">
+                                    <CompetitorsPanel isin={deal.isin} companyName={deal.name} />
                                 </section>
                             )}
                             {deal.isin && (
@@ -452,11 +496,10 @@ export default function DealDetailPage() {
                                 </section>
                             )}
 
-                                </div>
                             </div>
                         </div>
 
-                        <div className="hidden lg:block lg:sticky lg:top-8 h-fit lg:col-span-1">
+                        <div className="hidden lg:block lg:sticky lg:top-24 h-fit lg:col-span-1">
                             {renderBuyBox()}
                         </div>
                     </div>

@@ -1,5 +1,5 @@
 import { Field, ID, Int, InputType, ObjectType } from '@nestjs/graphql';
-import { ArrayNotEmpty, IsArray, IsDateString, IsIn, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsDateString, IsIn, IsInt, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PRICE_EVENT_CATEGORIES } from '../../prices/dto/price.dto';
 
@@ -16,6 +16,12 @@ export class NewsEventModel {
 
   @Field()
   category!: string;
+
+  @Field(() => String, { nullable: true })
+  sentiment?: string | null;
+
+  @Field(() => Int, { nullable: true })
+  impactScore?: number | null;
 
   @Field()
   title!: string;
@@ -52,6 +58,18 @@ export class UpsertNewsEventInput {
   @Field()
   @IsIn(PRICE_EVENT_CATEGORIES as unknown as string[])
   category!: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsIn(['G', 'R', 'B'])
+  sentiment?: string;
+
+  @Field(() => Int, { nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  impactScore?: number;
 
   @Field()
   @IsString()

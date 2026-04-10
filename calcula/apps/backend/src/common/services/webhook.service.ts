@@ -56,6 +56,7 @@ export class WebhookService {
           priceVersion: true,
           newsVersion: true,
           editorialVersion: true,
+          profileVersion: true,
           contentUpdatedAt: true
         }
       });
@@ -72,6 +73,7 @@ export class WebhookService {
         price_version: company.priceVersion,
         news_version: company.newsVersion,
         editorial_version: company.editorialVersion,
+        profile_version: company.profileVersion,
         content_updated_at: company.contentUpdatedAt.toISOString()
       };
 

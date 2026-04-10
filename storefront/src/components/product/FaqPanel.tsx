@@ -27,7 +27,10 @@ export function FaqPanel({ isin }: Props) {
     getSnapshot(isin, "editorial")
       .then((bundle) => {
         if (cancelled) return;
-        setItems(bundle.editorial?.faq?.items ?? []);
+        // Hide placeholder rows (question present, answer empty) — admins
+        // use those as TODOs in the editor; users should never see them.
+        const raw = bundle.editorial?.faq?.items ?? [];
+        setItems(raw.filter((i) => i.question.trim() && i.answer.trim()));
       })
       .catch(() => {
         if (!cancelled) setItems([]);
@@ -81,9 +84,30 @@ export function FaqPanel({ isin }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
-      <h2 className="text-xl font-bold text-slate-900 mb-4">
-        Frequently Asked Questions
-      </h2>
+      <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+        <h2 className="text-xl font-bold text-slate-900">
+          Frequently Asked Questions
+        </h2>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setExpanded(new Set(items.map((_, i) => i)))}
+            className="text-xs font-bold text-emerald-700 hover:text-emerald-800"
+          >
+            Expand all
+          </button>
+          <span className="text-slate-300" aria-hidden="true">
+            ·
+          </span>
+          <button
+            type="button"
+            onClick={() => setExpanded(new Set())}
+            className="text-xs font-bold text-slate-500 hover:text-slate-700"
+          >
+            Collapse all
+          </button>
+        </div>
+      </div>
       <ul className="divide-y divide-slate-100">
         {items.map((item, index) => {
           const isOpen = expanded.has(index);

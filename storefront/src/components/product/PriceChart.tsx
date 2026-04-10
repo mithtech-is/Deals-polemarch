@@ -47,15 +47,17 @@ const RANGE_MS: Record<Exclude<PresetRangeKey, "MAX">, number> = {
 
 // Colour per event category. Keep in sync with the admin UI palette in
 // calcula/apps/frontend/components/admin/price-history-section.tsx.
-const CATEGORY_COLOR: Record<"C" | "N" | "R" | "UNTAGGED", string> = {
-  C: "#059669", // emerald — corporate events
-  N: "#d97706", // amber — news
-  R: "#e11d48", // rose — regulatory
+const CATEGORY_COLOR: Record<"C" | "E" | "N" | "R" | "UNTAGGED", string> = {
+  C: "#059669", // emerald — corporate actions
+  E: "#2563eb", // blue    — business events
+  N: "#d97706", // amber   — news
+  R: "#e11d48", // rose    — regulatory
   UNTAGGED: "#64748b", // slate — legacy events with no category
 };
 
-const CATEGORY_LABEL: Record<"C" | "N" | "R", string> = {
-  C: "Corporate",
+const CATEGORY_LABEL: Record<"C" | "E" | "N" | "R", string> = {
+  C: "Corporate action",
+  E: "Business event",
   N: "News",
   R: "Regulatory",
 };
@@ -121,8 +123,8 @@ export function PriceChart({ isin }: Props) {
   // Category filter — which event kinds are visible on the chart. Keyed by
   // the PriceEventCategory literals plus "UNTAGGED" for legacy events
   // that pre-date the tag rollout. All four on by default.
-  const [visibleCategories, setVisibleCategories] = useState<Set<"C" | "N" | "R" | "UNTAGGED">>(
-    () => new Set(["C", "N", "R", "UNTAGGED"])
+  const [visibleCategories, setVisibleCategories] = useState<Set<"C" | "E" | "N" | "R" | "UNTAGGED">>(
+    () => new Set(["C", "E", "N", "R", "UNTAGGED"])
   );
   const [pinned, setPinned] = useState<{ ev: PriceEvent; x: number; y: number } | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -251,10 +253,10 @@ export function PriceChart({ isin }: Props) {
     const markData = snapshot.events
       .filter((e) => {
         const bucket = e.category ?? "UNTAGGED";
-        return visibleCategories.has(bucket as "C" | "N" | "R" | "UNTAGGED");
+        return visibleCategories.has(bucket as "C" | "E" | "N" | "R" | "UNTAGGED");
       })
       .map((e) => {
-        const bucket = (e.category ?? "UNTAGGED") as "C" | "N" | "R" | "UNTAGGED";
+        const bucket = (e.category ?? "UNTAGGED") as "C" | "E" | "N" | "R" | "UNTAGGED";
         const color = CATEGORY_COLOR[bucket];
         // Single-letter label inside the marker circle. "•" is used for
         // untagged so the letter doesn't visually clash with "C/N/R".
@@ -321,7 +323,7 @@ export function PriceChart({ isin }: Props) {
           // Check if this point is an event (and visible per filter)
           const ev = snapshot.events.find((e) => {
             if (Math.abs(new Date(e.datetime).getTime() - ts) >= 60_000) return false;
-            const bucket = (e.category ?? "UNTAGGED") as "C" | "N" | "R" | "UNTAGGED";
+            const bucket = (e.category ?? "UNTAGGED") as "C" | "E" | "N" | "R" | "UNTAGGED";
             return visibleCategories.has(bucket);
           });
           if (ev) {
@@ -606,32 +608,34 @@ function CategoryFilterPills({
   setVisible,
 }: {
   events: PriceEvent[];
-  visible: Set<"C" | "N" | "R" | "UNTAGGED">;
-  setVisible: (v: Set<"C" | "N" | "R" | "UNTAGGED">) => void;
+  visible: Set<"C" | "E" | "N" | "R" | "UNTAGGED">;
+  setVisible: (v: Set<"C" | "E" | "N" | "R" | "UNTAGGED">) => void;
 }) {
   // Bucket counts. Only render pills for buckets that have at least one event.
-  const counts: Record<"C" | "N" | "R" | "UNTAGGED", number> = {
+  const counts: Record<"C" | "E" | "N" | "R" | "UNTAGGED", number> = {
     C: 0,
+    E: 0,
     N: 0,
     R: 0,
     UNTAGGED: 0,
   };
   for (const e of events) {
-    const bucket = (e.category ?? "UNTAGGED") as "C" | "N" | "R" | "UNTAGGED";
+    const bucket = (e.category ?? "UNTAGGED") as "C" | "E" | "N" | "R" | "UNTAGGED";
     counts[bucket] += 1;
   }
 
   const buckets: Array<{
-    key: "C" | "N" | "R" | "UNTAGGED";
+    key: "C" | "E" | "N" | "R" | "UNTAGGED";
     label: string;
   }> = [
-    { key: "C", label: "Corporate" },
+    { key: "C", label: "Corporate action" },
+    { key: "E", label: "Business event" },
     { key: "N", label: "News" },
     { key: "R", label: "Regulatory" },
     { key: "UNTAGGED", label: "Untagged" },
   ];
 
-  const toggle = (key: "C" | "N" | "R" | "UNTAGGED") => {
+  const toggle = (key: "C" | "E" | "N" | "R" | "UNTAGGED") => {
     const next = new Set(visible);
     if (next.has(key)) next.delete(key);
     else next.add(key);

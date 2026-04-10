@@ -47,6 +47,13 @@ export class SnapshotsController {
     return this.snapshotsService.editorialByIsin(isin);
   }
 
+  @Get('companies/by-isin/:isin/snapshot/profile')
+  @Public()
+  @UseGuards(WebhookSecretGuard)
+  profileByIsin(@Param('isin') isin: string) {
+    return this.snapshotsService.profileByIsin(isin);
+  }
+
   // Moved off /companies/* to avoid colliding with CompaniesController's :id route
   @Get('snapshots/versions-since')
   @Public()

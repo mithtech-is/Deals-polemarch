@@ -2,83 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { getSnapshot } from "@/lib/snapshot";
-
-/**
- * Minimal markdown renderer. Handles paragraphs, bullets, bold, and italics
- * — everything an editor typically uses for a company narrative. We avoid
- * adding `react-markdown` as a dependency since the ask is 500 words max.
- */
-function renderMarkdown(md: string): React.ReactNode {
-  if (!md) return null;
-  const blocks = md.split(/\n{2,}/).filter((b) => b.trim());
-  return blocks.map((block, i) => {
-    // Bullet list?
-    const lines = block.split(/\r?\n/);
-    const isList = lines.every((l) => /^\s*[-*•]\s+/.test(l) || l.trim() === "");
-    if (isList) {
-      const items = lines
-        .map((l) => l.replace(/^\s*[-*•]\s+/, ""))
-        .filter(Boolean);
-      return (
-        <ul key={i} className="list-disc ml-5 space-y-1 text-sm text-slate-700">
-          {items.map((item, j) => (
-            <li key={j}>{inline(item)}</li>
-          ))}
-        </ul>
-      );
-    }
-    return (
-      <p key={i} className="text-sm text-slate-700 leading-relaxed">
-        {inline(block.replace(/\n/g, " "))}
-      </p>
-    );
-  });
-}
-
-function inline(text: string): React.ReactNode {
-  // Very small bold/italic renderer. Splits on **x** and *x* greedy-ish.
-  const parts: React.ReactNode[] = [];
-  let rest = text;
-  let key = 0;
-  while (rest.length > 0) {
-    const bold = rest.match(/\*\*([^*]+)\*\*/);
-    const italic = rest.match(/\*([^*]+)\*/);
-    const next =
-      bold && italic
-        ? (bold.index! <= italic.index! ? "bold" : "italic")
-        : bold
-          ? "bold"
-          : italic
-            ? "italic"
-            : null;
-    if (!next) {
-      parts.push(rest);
-      break;
-    }
-    const m = next === "bold" ? bold! : italic!;
-    if (m.index! > 0) parts.push(rest.slice(0, m.index!));
-    if (next === "bold") {
-      parts.push(<strong key={key++}>{m[1]}</strong>);
-    } else {
-      parts.push(<em key={key++}>{m[1]}</em>);
-    }
-    rest = rest.slice(m.index! + m[0].length);
-  }
-  return <>{parts}</>;
-}
+import { Markdown } from "./Markdown";
 
 type Props = {
   isin: string;
 };
 
-/** Strip markdown bullet/bold/italic markup for JSON-LD plaintext. */
+/** Strip markdown markup for JSON-LD plaintext. */
 function toPlainText(md: string): string {
   return md
     .replace(/```[\s\S]*?```/g, "")
     .replace(/`([^`]*)`/g, "$1")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*>\s?/gm, "")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/~~([^~]+)~~/g, "$1")
     .replace(/^\s*[-*•]\s+/gm, "")
+    .replace(/^\s*\d+\.\s+/gm, "")
+    .replace(/\|/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -188,20 +132,10 @@ export function CompanyOverviewPanel({ isin }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }}
       />
 
-      <header className="flex items-center justify-between mb-4">
+      <header className="mb-4">
         <h2 id={headingId} className="text-xl font-bold text-slate-900" itemProp="name">
           About {name}
         </h2>
-        {hasSections && (
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="text-xs font-bold text-emerald-700 hover:text-emerald-800"
-            aria-expanded={expanded}
-          >
-            {expanded ? "Show less" : "Show more"}
-          </button>
-        )}
       </header>
 
       <section aria-labelledby={`${summaryId}-h`} itemProp="description">
@@ -211,7 +145,7 @@ export function CompanyOverviewPanel({ isin }: Props) {
         >
           What does {name} do?
         </h3>
-        <div className="space-y-3">{renderMarkdown(overview.summary)}</div>
+        <div className="space-y-3"><Markdown>{overview.summary}</Markdown></div>
       </section>
 
       {/*
@@ -227,7 +161,7 @@ export function CompanyOverviewPanel({ isin }: Props) {
               <h3 id={`${bmId}-h`} className="text-base font-bold text-slate-900 mb-2">
                 How does {name} make money?
               </h3>
-              <div className="space-y-2">{renderMarkdown(overview.businessModel)}</div>
+              <div className="space-y-2"><Markdown>{overview.businessModel}</Markdown></div>
             </section>
           )}
           {overview.competitiveMoat && (
@@ -235,7 +169,7 @@ export function CompanyOverviewPanel({ isin }: Props) {
               <h3 id={`${moatId}-h`} className="text-base font-bold text-slate-900 mb-2">
                 What makes {name} different from competitors?
               </h3>
-              <div className="space-y-2">{renderMarkdown(overview.competitiveMoat)}</div>
+              <div className="space-y-2"><Markdown>{overview.competitiveMoat}</Markdown></div>
             </section>
           )}
           {overview.risks && (
@@ -243,9 +177,31 @@ export function CompanyOverviewPanel({ isin }: Props) {
               <h3 id={`${risksId}-h`} className="text-base font-bold text-slate-900 mb-2">
                 What are the risks of investing in {name}?
               </h3>
-              <div className="space-y-2">{renderMarkdown(overview.risks)}</div>
+              <div className="space-y-2"><Markdown>{overview.risks}</Markdown></div>
             </section>
           )}
+        </div>
+      )}
+
+      {hasSections && (
+        <div className="mt-5 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-emerald-200 bg-emerald-50 text-xs font-bold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-colors"
+            aria-expanded={expanded}
+          >
+            {expanded ? "Show less" : `Show more (${qa.length - 1} section${qa.length - 1 === 1 ? "" : "s"})`}
+            <svg
+              className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={3}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
         </div>
       )}
     </article>

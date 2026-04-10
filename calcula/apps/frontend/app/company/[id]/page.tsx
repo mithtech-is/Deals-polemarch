@@ -27,7 +27,7 @@ const VisTableShell = dynamic(
 );
 import type { Company, FinancialLineItem, FinancialPeriod, FinancialValue } from '@/types/domain';
 
-type StatementType = 'balance_sheet' | 'pnl' | 'cashflow' | 'derived';
+type StatementType = 'balance_sheet' | 'pnl' | 'cashflow' | 'ratios_valuations';
 type DashboardTab = 'balance_sheet' | 'pnl' | 'cashflow' | 'valuation' | 'core25';
 
 const CORE_25_CODES = [
@@ -99,7 +99,7 @@ export default function CompanyPage() {
   const [error, setError] = useState<string | null>(null);
 
   const activeStatementType: StatementType = useMemo(() => {
-    if (dashboardTab === 'valuation' || dashboardTab === 'core25') return 'derived';
+    if (dashboardTab === 'valuation' || dashboardTab === 'core25') return 'ratios_valuations';
     return dashboardTab;
   }, [dashboardTab]);
 

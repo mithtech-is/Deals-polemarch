@@ -10,6 +10,8 @@ type NewsEventRow = {
   companyId: string;
   occurredAt: Date;
   category: string;
+  sentiment: string | null;
+  impactScore: number | null;
   title: string;
   body: string;
   sourceUrl: string | null;
@@ -23,6 +25,8 @@ function serialize(row: NewsEventRow) {
     companyId: row.companyId,
     occurredAt: row.occurredAt.toISOString(),
     category: row.category,
+    sentiment: row.sentiment ?? null,
+    impactScore: row.impactScore ?? null,
     title: row.title,
     body: row.body,
     sourceUrl: row.sourceUrl,
@@ -73,6 +77,8 @@ export class NewsEventsService {
       companyId: input.companyId,
       occurredAt,
       category: input.category,
+      sentiment: input.sentiment ?? null,
+      impactScore: input.impactScore ?? null,
       title: input.title,
       body: input.body,
       sourceUrl: input.sourceUrl ?? null
@@ -104,6 +110,8 @@ export class NewsEventsService {
           companyId,
           occurredAt: new Date(r.occurredAt),
           category: r.category,
+          sentiment: r.sentiment ?? null,
+          impactScore: r.impactScore ?? null,
           title: r.title,
           body: r.body,
           sourceUrl: r.sourceUrl ?? null

@@ -6,6 +6,14 @@
  * locale, fraction digits) without grepping the codebase.
  */
 
+import {
+  DEFAULT_CURRENCY_CODE,
+  currencyMeta,
+  formatAmount,
+  formatMoney,
+  type CurrencyCode,
+} from "./currency";
+
 const INR_FORMATTER = new Intl.NumberFormat("en-IN", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -18,16 +26,27 @@ export function round2(value: number | string | null | undefined): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Format a price as Indian-style "1,23,456.78" with no currency prefix. */
-export function formatPrice(value: number | string | null | undefined): string {
-  return INR_FORMATTER.format(round2(value));
+/**
+ * Format a price with the currency's native grouping, no symbol.
+ * Defaults to the build-time DEFAULT_CURRENCY_CODE. Client components
+ * that need the *live* user-selected currency should call
+ * `useCurrency().formatAmount()` from CurrencyContext instead.
+ */
+export function formatPrice(
+  value: number | string | null | undefined,
+  currency: CurrencyCode = DEFAULT_CURRENCY_CODE
+): string {
+  if (currency === "INR") return INR_FORMATTER.format(round2(value));
+  return formatAmount(round2(value), currency);
 }
 
-/** Format a price with the ₹ symbol prefix: "₹ 1,23,456.78". */
+/** Format a price with the currency symbol prefix: "₹ 1,23,456.78". */
 export function formatPriceWithSymbol(
-  value: number | string | null | undefined
+  value: number | string | null | undefined,
+  currency: CurrencyCode = DEFAULT_CURRENCY_CODE
 ): string {
-  return `₹ ${formatPrice(value)}`;
+  if (currency === "INR") return `₹ ${formatPrice(value, "INR")}`;
+  return formatMoney(round2(value), currency);
 }
 
 /**
