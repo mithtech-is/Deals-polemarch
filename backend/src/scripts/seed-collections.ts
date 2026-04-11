@@ -1,6 +1,7 @@
 import { ExecArgs } from "@medusajs/framework/types"
 import { Modules } from "@medusajs/framework/utils"
-import { createProductCollectionsWorkflow } from "@medusajs/medusa/core-flows"
+import { createCollectionsWorkflow } from "@medusajs/medusa/core-flows"
+
 
 const COLLECTIONS = [
   "DRHP Filed",
@@ -39,7 +40,7 @@ export default async function seedCollections({ container }: ExecArgs) {
     return
   }
 
-  await createProductCollectionsWorkflow(container).run({
+  await createCollectionsWorkflow(container).run({
     input: { collections: toCreate },
   })
 

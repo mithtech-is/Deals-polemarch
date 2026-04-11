@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "rm -rf .next tsconfig.tsbuildinfo",
-    "dev": "NODE_OPTIONS='--max-old-space-size=4096' next dev",
-    "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
+    "predev": "rimraf .next tsconfig.tsbuildinfo",
+    "dev": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" next dev --port 3005",
+    "build": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" next build",
     "start": "next start",
-    "clean": "rm -rf .next tsconfig.tsbuildinfo node_modules/.cache",
+    "clean": "rimraf .next tsconfig.tsbuildinfo node_modules/.cache",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -26,6 +26,8 @@
     "@types/node": "^22.18.1",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
+    "cross-env": "^7.0.3",
+    "rimraf": "^6.0.1",
     "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2"
   }

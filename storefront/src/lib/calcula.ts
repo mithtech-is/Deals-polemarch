@@ -7,6 +7,7 @@
  */
 
 const MEDUSA_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
+const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
 
 export interface CalculaOverviewCard {
   code: string;
@@ -76,6 +77,7 @@ export async function getCompanyFinancials(isin: string): Promise<CalculaCompany
   try {
     const response = await fetch(`${MEDUSA_URL}/store/calcula/isin/${isin}`, {
       signal: AbortSignal.timeout(5000),
+      headers: { "x-publishable-api-key": PUBLISHABLE_KEY },
     });
 
     if (!response.ok) return null;

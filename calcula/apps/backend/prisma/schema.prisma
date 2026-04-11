@@ -248,7 +248,7 @@ model FinancialRemainderMapping {
 }
 
 model FinancialMetric {
-  id          BigInt            @id @default(autoincrement())
+  id          BigInt            @default(autoincrement())
   companyId   String            @map("company_id") @db.Uuid
   periodId    String            @map("period_id") @db.Uuid
   lineItemId  String            @map("line_item_id") @db.Uuid
@@ -262,6 +262,7 @@ model FinancialMetric {
   period   FinancialPeriod   @relation(fields: [periodId], references: [id], onDelete: Cascade)
   lineItem FinancialLineItem @relation(fields: [lineItemId], references: [id], onDelete: Cascade)
 
+  @@id([companyId, id])
   @@unique([companyId, periodId, lineItemId])
   @@index([companyId, periodId])
   @@index([lineItemId, periodId])
