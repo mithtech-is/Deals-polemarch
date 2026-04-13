@@ -10,8 +10,8 @@ import type { AuthToken } from '@/types/domain';
 export default function LoginPage() {
   const { setAuth } = useAuth();
   const router = useRouter();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -39,7 +39,7 @@ export default function LoginPage() {
     >
       <div className="auth-shell">
         <div className="card col" style={{ maxWidth: 460, width: '100%', gap: 12 }}>
-          <p className="muted">Seed user: admin / admin123</p>
+          <p className="muted">Sign in to your account</p>
           <label className="col">
             <span>Username</span>
             <input value={username} onChange={(e) => setUsername(e.target.value)} />

@@ -6,12 +6,20 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret || jwtSecret === 'change-me') {
+    throw new Error('JWT_SECRET env var must be set to a secure value (not "change-me")');
+  }
+
   const app = await NestFactory.create(AppModule);
-  app.use(json({ limit: '250mb' }));
-  app.use(urlencoded({ extended: true, limit: '250mb' }));
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ extended: true, limit: '50mb' }));
   app.use(compression());
   app.setGlobalPrefix('api');
-  app.enableCors();
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3005'],
+    credentials: true,
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

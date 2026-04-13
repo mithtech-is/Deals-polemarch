@@ -1,5 +1,6 @@
 import { SubscriberArgs, SubscriberConfig } from "@medusajs/framework/subscribers"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { logger } from "../utils/logger"
 
 /**
  * calcula-price-sync
@@ -25,7 +26,7 @@ export default async function calculaPriceSync({
 
     const query = container.resolve(ContainerRegistrationKeys.QUERY) as any
     if (!query) {
-      console.warn("[calcula-price-sync] QUERY resolver unavailable — skipping")
+      logger.warn("[calcula-price-sync] QUERY resolver unavailable — skipping")
       return
     }
 
@@ -36,19 +37,19 @@ export default async function calculaPriceSync({
     })
     const product = Array.isArray(data) ? data[0] : data
     if (!product) {
-      console.log(`[calcula-price-sync] product ${productId} not found`)
+      logger.info(`[calcula-price-sync] product ${productId} not found`)
       return
     }
 
     const isin = (product.metadata?.isin || "").toString().trim()
     if (!isin) {
-      console.log(`[calcula-price-sync] product ${productId} has no ISIN — skipping`)
+      logger.info(`[calcula-price-sync] product ${productId} has no ISIN — skipping`)
       return
     }
 
     const variant = product.variants?.[0]
     if (!variant) {
-      console.log(`[calcula-price-sync] product ${productId} (${isin}) has no variants — skipping`)
+      logger.info(`[calcula-price-sync] product ${productId} (${isin}) has no variants — skipping`)
       return
     }
 
@@ -56,7 +57,7 @@ export default async function calculaPriceSync({
       (p: any) => p?.currency_code?.toLowerCase?.() === "inr"
     )
     if (!inrPrice) {
-      console.log(
+      logger.info(
         `[calcula-price-sync] variant ${variant.id} (${isin}) has no INR price — prices found: ${JSON.stringify(
           variant.prices?.map((p: any) => p?.currency_code) ?? []
         )}`
@@ -88,7 +89,7 @@ export default async function calculaPriceSync({
       | ((isin: string, price: number) => boolean)
       | undefined
     if (typeof isLoopEcho === "function" && isLoopEcho(isin, priceInr)) {
-      console.log(
+      logger.info(
         `[calcula-price-sync] ${isin} @ ₹${priceInr} skipped — echo of last value from Calcula`
       )
       return
@@ -105,7 +106,7 @@ export default async function calculaPriceSync({
     )
   } catch (err: any) {
     // Never throw out of a subscriber — it'd dead-letter the event.
-    console.error("[calcula-price-sync] failed:", err?.message || err, err?.stack)
+    logger.error("[calcula-price-sync] failed:", err?.message || err, err?.stack)
   }
 }
 

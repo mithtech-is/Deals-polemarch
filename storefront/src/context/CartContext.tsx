@@ -31,9 +31,7 @@ interface MedusaCartLineItem {
     } | null;
 }
 
-const LOW_QTY_FEE_THRESHOLD = 10000;
-const LOW_QTY_FEE_AMOUNT = 250;
-const PROCESSING_FEE_RATE = 0.02;
+import { LOW_QTY_FEE_THRESHOLD, LOW_QTY_FEE_AMOUNT, PROCESSING_FEE_RATE } from "@/lib/constants";
 
 export function computeLineFees(unitPrice: number, quantity: number) {
     const investment = unitPrice * quantity;
@@ -95,7 +93,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             setItems(mappedItems);
         } catch (error) {
             console.error("Error refreshing cart:", error);
-            if (typeof window !== "undefined") {
+            // Only clear the cart if it's a 404 (cart no longer exists)
+            // For network errors, keep the cart ID for retry
+            const isNotFound = error instanceof Error && error.message.includes("Failed to retrieve cart");
+            if (isNotFound && typeof window !== "undefined") {
                 localStorage.removeItem(CART_ID_KEY);
                 setCartId(null);
             }

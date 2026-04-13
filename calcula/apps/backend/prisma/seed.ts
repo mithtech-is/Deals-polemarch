@@ -1,14 +1,18 @@
 import { PrismaClient, PlatformRole, StatementType } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
+  const defaultPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const hashedPassword = await bcrypt.hash(defaultPassword, 12);
+
   const admin = await prisma.platformUser.upsert({
     where: { username: 'admin' },
-    update: {},
+    update: { passwordHash: hashedPassword },
     create: {
       username: 'admin',
-      passwordHash: 'admin123',
+      passwordHash: hashedPassword,
       role: PlatformRole.ADMIN
     }
   });

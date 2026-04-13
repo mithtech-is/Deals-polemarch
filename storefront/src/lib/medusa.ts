@@ -1,5 +1,9 @@
-const MEDUSA_BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
-const MEDUSA_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
+const MEDUSA_BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000";
+const MEDUSA_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "";
+
+if (typeof window === "undefined" && process.env.NODE_ENV === "production" && MEDUSA_BACKEND_URL.includes("localhost")) {
+    throw new Error("NEXT_PUBLIC_MEDUSA_BACKEND_URL must be set in production (cannot use localhost)");
+}
 
 const medusaHeaders = {
     "Content-Type": "application/json",
@@ -395,9 +399,13 @@ export const mapMedusaToDeal = (medusaProduct: any) => {
         summary: medusaProduct.description || "",
         description: medusaProduct.metadata?.long_description || medusaProduct.description || "",
         isTrending: medusaProduct.metadata?.is_trending === "true" || medusaProduct.metadata?.is_trending === true,
-        financials: typeof medusaProduct.metadata?.financials === "string"
-            ? JSON.parse(medusaProduct.metadata.financials)
-            : medusaProduct.metadata?.financials || [],
+        financials: (() => {
+            if (typeof medusaProduct.metadata?.financials === "string") {
+                try { return JSON.parse(medusaProduct.metadata.financials); }
+                catch { return []; }
+            }
+            return medusaProduct.metadata?.financials || [];
+        })(),
         metadata: medusaProduct.metadata || {},
         variants: medusaProduct.variants || [],
         peRatio: medusaProduct.metadata?.pe_ratio,

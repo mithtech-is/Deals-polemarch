@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { JwtService } from '@nestjs/jwt';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -17,14 +18,19 @@ export class JwtAuthGuard implements CanActivate {
       return true;
     }
 
-    const request = this.getRequest(context);
+    const request = this.getRequest(context) as any;
 
     // Allow server-to-server calls authenticated via X-Webhook-Secret
     // (e.g. Medusa creating a Calcula company after product creation).
     const webhookSecret = request.headers?.['x-webhook-secret'] as string | undefined;
     const expectedSecret = process.env.CALCULA_WEBHOOK_SECRET;
-    if (webhookSecret && expectedSecret && webhookSecret === expectedSecret) {
-      request.user = { sub: 'webhook', username: 'webhook', role: 'ADMIN' };
+    if (
+      webhookSecret &&
+      expectedSecret &&
+      webhookSecret.length === expectedSecret.length &&
+      crypto.timingSafeEqual(Buffer.from(webhookSecret), Buffer.from(expectedSecret))
+    ) {
+      request.user = { sub: 'webhook', username: 'webhook', role: 'WEBHOOK' };
       return true;
     }
 
@@ -34,8 +40,12 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     const token = authHeader.replace('Bearer ', '').trim();
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret || jwtSecret === 'change-me') {
+      throw new UnauthorizedException('Server configuration error');
+    }
     try {
-      const payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET ?? 'change-me' });
+      const payload = this.jwtService.verify(token, { secret: jwtSecret });
       request.user = payload;
       return true;
     } catch {

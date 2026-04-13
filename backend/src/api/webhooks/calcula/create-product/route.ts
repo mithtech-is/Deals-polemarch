@@ -1,5 +1,7 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { createProductsWorkflow } from "@medusajs/medusa/core-flows"
+import crypto from "crypto"
+import { logger } from "../../../../utils/logger"
 
 /**
  * POST /webhooks/calcula/create-product
@@ -19,7 +21,13 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     // Auth
     const secret = req.headers["x-webhook-secret"]
     const expectedSecret = process.env.CALCULA_WEBHOOK_SECRET
-    if (!expectedSecret || secret !== expectedSecret) {
+    if (
+      !expectedSecret ||
+      !secret ||
+      typeof secret !== "string" ||
+      secret.length !== expectedSecret.length ||
+      !crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(expectedSecret))
+    ) {
       return res.status(401).json({ message: "Invalid webhook secret" })
     }
 
@@ -84,7 +92,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       if (listingStatus) staticFields.listing_status = listingStatus
       await calcula.upsertStaticFields(isin, staticFields)
     } catch (err: any) {
-      console.error("[create-product] calcula upsert failed:", err.message)
+      logger.error("[create-product] calcula upsert failed:", err.message)
     }
 
     res.json({
@@ -94,7 +102,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       isin,
     })
   } catch (error: any) {
-    console.error("[create-product] error:", error)
+    logger.error("[create-product] error:", error)
     res.status(500).json({ message: error?.message || "Failed to create product" })
   }
 }

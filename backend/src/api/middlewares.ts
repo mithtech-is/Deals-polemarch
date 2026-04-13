@@ -92,8 +92,13 @@ export default defineMiddlewares({
             method: "GET",
             middlewares: [
                 (req, res, next) => {
-                    const fileName = req.params[0] || path.basename(req.path);
-                    const filePath = path.join(process.cwd(), "static", fileName);
+                    const staticDir = path.resolve(process.cwd(), "static");
+                    const fileName = path.basename(req.params[0] || req.path);
+                    const filePath = path.resolve(staticDir, fileName);
+
+                    if (!filePath.startsWith(staticDir + path.sep)) {
+                        return res.status(403).json({ message: "Access denied" });
+                    }
 
                     if (fs.existsSync(filePath)) {
                         res.sendFile(filePath);
@@ -242,7 +247,10 @@ export default defineMiddlewares({
                         }
                         next();
                     } catch (error) {
-                        next();
+                        logger.error("KYC verification check failed", { cartId: id, error });
+                        return res.status(500).json({
+                            message: "Unable to verify KYC status. Please try again later."
+                        });
                     }
                 }
             ]

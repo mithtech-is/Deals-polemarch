@@ -72,12 +72,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         await medusaClient.auth.register(data);
     };
 
-    const logout = () => {
+    const logout = useCallback(() => {
         if (typeof window !== "undefined") {
             localStorage.removeItem("medusa_auth_token");
         }
         setUser(null);
-    };
+    }, []);
 
     return (
         <UserContext.Provider value={{ user, isLoading, login, register, logout, checkSession }}>

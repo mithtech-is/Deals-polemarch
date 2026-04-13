@@ -33,8 +33,8 @@ class FileService {
         }
     }
     async uploadLocal(file) {
-        const extension = path.extname(file.originalname) || ".pdf";
-        const fileName = `${Date.now()}_${file.originalname}`;
+        const sanitizedName = path.basename(file.originalname || "upload.pdf").replace(/[^a-zA-Z0-9._-]/g, "_");
+        const fileName = `${Date.now()}_${sanitizedName}`;
         return await this.saveFile(file.buffer, fileName);
     }
     async saveFile(buffer, fileName) {

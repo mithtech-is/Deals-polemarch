@@ -1,6 +1,8 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
 import { syncLatestPriceToMedusaVariant } from "../../../modules/calcula/variant-price-sync"
+import crypto from "crypto"
+import { logger } from "../../../utils/logger"
 
 /**
  * POST /webhooks/calcula
@@ -22,7 +24,13 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     const secret = req.headers["x-webhook-secret"]
     const expectedSecret = process.env.CALCULA_WEBHOOK_SECRET
 
-    if (!expectedSecret || secret !== expectedSecret) {
+    if (
+      !expectedSecret ||
+      !secret ||
+      typeof secret !== "string" ||
+      secret.length !== expectedSecret.length ||
+      !crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(expectedSecret))
+    ) {
       return res.status(401).json({ message: "Invalid webhook secret" })
     }
 
@@ -86,11 +94,11 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             }
           } catch (nameErr: any) {
             // Non-critical — product title stays as-is
-            console.warn(`[webhooks/calcula] title sync failed for ${payload.isin}: ${nameErr.message}`)
+            logger.warn(`[webhooks/calcula] title sync failed for ${payload.isin}: ${nameErr.message}`)
           }
         }
       } catch (err: any) {
-        console.error(
+        logger.error(
           `[webhooks/calcula] handleVersionEnvelope failed for ${payload.isin}:`,
           err
         )
@@ -100,7 +108,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
     res.json({ success: true, isin: payload.isin, queued_at: new Date().toISOString() })
   } catch (error: any) {
-    console.error("Calcula webhook error:", error)
+    logger.error("Calcula webhook error:", { error: error?.message })
     res.status(500).json({ message: error?.message || "Webhook processing failed" })
   }
 }

@@ -19,11 +19,11 @@ services:
       - key: COOKIE_SECRET
         generateValue: true
       - key: STORE_CORS
-        value: "*"
+        value: "https://deals.polemarch.in,https://www.polemarch.in"
       - key: ADMIN_CORS
-        value: "*"
+        value: "https://deals.polemarch.in"
       - key: AUTH_CORS
-        value: "*"
+        value: "https://deals.polemarch.in,https://www.polemarch.in"
       - key: NODE_VERSION
         value: "20.11.1"
 

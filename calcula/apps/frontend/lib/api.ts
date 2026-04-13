@@ -1,6 +1,10 @@
 const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL ?? 'http://localhost:4100/graphql';
 const REST_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4100/api';
 
+if (typeof window === 'undefined' && process.env.NODE_ENV === 'production' && GRAPHQL_URL.includes('localhost')) {
+  throw new Error('NEXT_PUBLIC_GRAPHQL_URL must be set in production');
+}
+
 export function getRestUrl() {
   return REST_URL;
 }

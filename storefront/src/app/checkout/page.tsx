@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { medusaClient } from "@/lib/medusa";
 import { formatPrice } from "@/lib/format";
+import { WHATSAPP_SUPPORT_NUMBER } from "@/lib/constants";
 
 interface CheckoutUser {
     email: string;
@@ -113,7 +114,7 @@ Investment Amount: Rs. ${formatPrice(order.total ?? 0)}
 
 Please guide me on the next steps to complete this transaction.`);
 
-        const whatsappUrl = `https://wa.me/919008770738?text=${message}`;
+        const whatsappUrl = `https://wa.me/${WHATSAPP_SUPPORT_NUMBER}?text=${message}`;
 
         return (
             <div className="flex flex-col min-h-screen bg-white">

@@ -67,8 +67,12 @@ export class CompaniesService {
     }
 
     // Fire-and-forget: create a matching Medusa product and send version envelope.
-    this.notifyMedusaOfNewCompany(company).catch(() => {});
-    this.webhookService.syncToMedusa(company.id).catch(() => {});
+    this.notifyMedusaOfNewCompany(company).catch((err) => {
+      this.logger.warn(`Failed to notify Medusa of new company ${company.id}: ${(err as Error).message}`);
+    });
+    this.webhookService.syncToMedusa(company.id).catch((err) => {
+      this.logger.warn(`Failed to sync company ${company.id} to Medusa: ${(err as Error).message}`);
+    });
 
     return company;
   }
