@@ -11,6 +11,8 @@
     "bootstrap": "echo 'Initialize backend/frontend apps here'"
   },
   "dependencies": {
-    "@as-integrations/express5": "^1.1.2"
+    "@as-integrations/express5": "^1.1.2",
+    "@tailwindcss/oxide-win32-x64-msvc": "^4.2.2",
+    "lightningcss-win32-x64-msvc": "^1.32.0"
   }
 }
