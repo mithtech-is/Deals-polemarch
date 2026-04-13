@@ -62,7 +62,8 @@ const MarketplaceClient = ({
             result = result.filter(
                 (deal) =>
                     normalizeValue(deal.name).includes(query) ||
-                    normalizeValue(deal.sector).includes(query)
+                    normalizeValue(deal.sector).includes(query) ||
+                    normalizeValue(deal.searchAliases).includes(query)
             );
         }
 

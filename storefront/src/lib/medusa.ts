@@ -425,5 +425,6 @@ export const mapMedusaToDeal = (medusaProduct: any) => {
         profitValue: medusaProduct.metadata?.profit_value,
         revenueGrowth: medusaProduct.metadata?.revenue_growth,
         profitGrowth: medusaProduct.metadata?.profit_growth,
+        searchAliases: medusaProduct.metadata?.search_aliases || "",
     };
 };

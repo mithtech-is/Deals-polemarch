@@ -136,7 +136,7 @@ export type FinancialLineItem = {
   code: string;
   name: string;
   parentId?: string | null;
-  statementType: 'balance_sheet' | 'pnl' | 'cashflow' | 'change_in_equity' | 'ratios_valuations';
+  statementType: StatementType;
   orderCode: string;
   displayOrder: number;
   isRequired: boolean;

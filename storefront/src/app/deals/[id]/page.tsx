@@ -254,6 +254,7 @@ export default function DealDetailPage() {
                                 "@context": "https://schema.org",
                                 "@type": "Product",
                                 name: `${deal.name} Unlisted Shares`,
+                                ...(deal.searchAliases ? { alternateName: deal.searchAliases.split(",").map(a => a.trim()).filter(Boolean) } : {}),
                                 image: deal.logo || undefined,
                                 description:
                                     deal.description ||
@@ -302,6 +303,9 @@ export default function DealDetailPage() {
                                 <div>
                                     <h1 className="text-3xl font-bold text-slate-900">{deal.name}</h1>
                                     <p className="text-slate-500 uppercase text-xs font-bold tracking-wider mt-1">{deal.sector || "-"} / {deal.shareType || "UNLISTED"}</p>
+                                    {deal.searchAliases && (
+                                        <p className="text-xs text-slate-400 mt-1">Also known as: {deal.searchAliases.split(",").map(a => a.trim()).filter(a => a.toLowerCase() !== deal.name.toLowerCase()).join(", ")}</p>
+                                    )}
                                 </div>
                             </div>
 
@@ -460,7 +464,7 @@ export default function DealDetailPage() {
                                 </section>
                             )}
                             {deal.isin && (
-                                <section id="valuations">
+                                <section>
                                     <ValuationPanel isin={deal.isin} />
                                 </section>
                             )}

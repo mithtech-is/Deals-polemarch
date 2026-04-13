@@ -1,0 +1,9 @@
+datetime,price,note,link
+2025-10-09T18:30:00.000Z,125.00,,
+2025-11-08T18:30:00.000Z,118.50,,
+2025-12-08T18:30:00.000Z,95.20,"Quarterly results announced",https://example.com/q1-results
+2026-01-07T18:30:00.000Z,72.30,,
+2026-02-06T18:30:00.000Z,46.00,"INR 3500 Cr CCPS B rights issue at INR 96.8",https://example.com/rights-issue
+2026-03-08T18:30:00.000Z,22.80,,
+2026-03-31T18:30:00.000Z,12.50,"Secondary market transfer at premium",
+2026-04-07T18:30:00.000Z,6.50,,

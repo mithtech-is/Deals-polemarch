@@ -1,4 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { Modules } from "@medusajs/framework/utils"
 import { syncLatestPriceToMedusaVariant } from "../../../modules/calcula/variant-price-sync"
 
 /**
@@ -67,6 +68,26 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         })
         if (result?.updated && result?.prices && typeof result?.latestPrice === "number") {
           await syncLatestPriceToMedusaVariant(req.scope, payload.isin!, result.latestPrice)
+        }
+
+        // Propagate company_name → Medusa product title if it changed.
+        if (payload.company_name && payload.isin) {
+          try {
+            const productModule: any = req.scope.resolve(Modules.PRODUCT)
+            const products = await productModule.listProducts(
+              { metadata: { isin: payload.isin } },
+              { select: ["id", "title"], take: 1 }
+            )
+            const product = products?.[0]
+            if (product && product.title !== payload.company_name) {
+              await productModule.upsertProducts([
+                { id: product.id, title: payload.company_name }
+              ])
+            }
+          } catch (nameErr: any) {
+            // Non-critical — product title stays as-is
+            console.warn(`[webhooks/calcula] title sync failed for ${payload.isin}: ${nameErr.message}`)
+          }
         }
       } catch (err: any) {
         console.error(

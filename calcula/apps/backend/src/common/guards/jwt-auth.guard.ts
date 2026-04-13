@@ -18,6 +18,16 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     const request = this.getRequest(context);
+
+    // Allow server-to-server calls authenticated via X-Webhook-Secret
+    // (e.g. Medusa creating a Calcula company after product creation).
+    const webhookSecret = request.headers?.['x-webhook-secret'] as string | undefined;
+    const expectedSecret = process.env.CALCULA_WEBHOOK_SECRET;
+    if (webhookSecret && expectedSecret && webhookSecret === expectedSecret) {
+      request.user = { sub: 'webhook', username: 'webhook', role: 'ADMIN' };
+      return true;
+    }
+
     const authHeader = request.headers?.authorization as string | undefined;
     if (!authHeader?.startsWith('Bearer ')) {
       throw new UnauthorizedException('Missing bearer token');

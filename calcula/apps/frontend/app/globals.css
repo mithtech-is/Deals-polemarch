@@ -366,7 +366,6 @@ button.secondary {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
-  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -399,8 +398,9 @@ td {
 th {
   background: #f8fafc;
   position: sticky;
-  top: 0;
-  z-index: 1;
+  /* Pin below the sticky CompanyTabs bar (~52px: 30px button + 20px padding + 2px border) */
+  top: 52px;
+  z-index: 10;
 }
 
 tbody tr:hover td {

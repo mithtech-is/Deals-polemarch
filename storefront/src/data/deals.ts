@@ -45,6 +45,7 @@ export interface Deal {
 
     lotSize?: number;
     availability?: number;
+    searchAliases?: string;
 
     revenueValue?: string;
     profitValue?: string;

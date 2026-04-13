@@ -54,10 +54,17 @@ export async function generateMetadata({
   const isin =
     typeof product.metadata?.isin === "string" ? (product.metadata.isin as string) : "";
   const titleIsin = isin ? ` (${isin})` : "";
-  const title = `${name}${titleIsin} Unlisted Share Price | Polemarch`;
+  const aliases = typeof product.metadata?.search_aliases === "string"
+    ? (product.metadata.search_aliases as string).split(",").map(a => a.trim()).filter(Boolean)
+    : [];
+  // Pick the first alias that differs from the product title as the primary alias
+  // for inclusion in the page title and description.
+  const primaryAlias = aliases.find(a => a.toLowerCase() !== name.toLowerCase()) || "";
+  const titleAlias = primaryAlias ? ` (${primaryAlias})` : "";
+  const title = `${name}${titleAlias}${titleIsin} Unlisted Share Price | Polemarch`;
   const rawDesc =
     product.description ||
-    `Buy ${name} unlisted shares on Polemarch. Live indicative price, KYC-ready onboarding, and transparent demat transfers.`;
+    `Buy ${name}${primaryAlias ? ` (${primaryAlias})` : ""} unlisted shares on Polemarch. Live indicative price, KYC-ready onboarding, and transparent demat transfers.`;
   // Clamp to ~155 chars for snippets.
   const description =
     rawDesc.length > 155 ? rawDesc.slice(0, 152).trimEnd() + "…" : rawDesc;
@@ -68,6 +75,7 @@ export async function generateMetadata({
   return {
     title,
     description,
+    keywords: [name, ...aliases, "unlisted shares", "pre-IPO", "buy unlisted shares"].filter(Boolean),
     alternates: { canonical },
     openGraph: {
       type: "website",

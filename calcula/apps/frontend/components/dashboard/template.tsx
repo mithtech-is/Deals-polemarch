@@ -10,16 +10,15 @@ type DashboardPageProps = {
 export function DashboardPage({ title, subtitle, actions, children }: DashboardPageProps) {
   return (
     <div className="col" style={{ gap: 20 }}>
-      {(actions || subtitle) && (
-        <section className="dashboard-header-inline" style={{ marginBottom: 4 }}>
-          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div className="col" style={{ gap: 4 }}>
-              {subtitle && <p className="muted page-subtitle">{subtitle}</p>}
-            </div>
-            {actions && <div className="row" style={{ flexWrap: 'wrap' }}>{actions}</div>}
+      <section className="dashboard-header-inline" style={{ marginBottom: 4 }}>
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="col" style={{ gap: 4 }}>
+            <h1 className="page-title" style={{ margin: 0 }}>{title}</h1>
+            {subtitle && <p className="muted page-subtitle" style={{ margin: 0 }}>{subtitle}</p>}
           </div>
-        </section>
-      )}
+          {actions && <div className="row" style={{ flexWrap: 'wrap' }}>{actions}</div>}
+        </div>
+      </section>
       {children}
     </div>
   );

@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { WebhookService } from '../../common/services/webhook.service';
 import { buildDefaultFaqForCompany } from '../editorial/editorial.service';
 import { CreateCompanyInput, UpdateCompanyInput } from './dto/company.dto';
 
@@ -7,7 +8,10 @@ import { CreateCompanyInput, UpdateCompanyInput } from './dto/company.dto';
 export class CompaniesService {
   private readonly logger = new Logger(CompaniesService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly webhookService: WebhookService
+  ) {}
 
   list(q?: string) {
     return this.prisma.company.findMany({
@@ -34,6 +38,12 @@ export class CompaniesService {
   }
 
   async create(input: CreateCompanyInput) {
+    // Idempotent: if a company with this ISIN already exists, return it.
+    const existing = await this.prisma.company.findUnique({ where: { isin: input.isin } });
+    if (existing) {
+      return existing;
+    }
+
     const company = await this.prisma.company.create({
       data: {
         ...input,
@@ -41,6 +51,7 @@ export class CompaniesService {
         listingStatus: input.listingStatus ?? 'unlisted'
       }
     });
+
     // Auto-seed Polemarch's standard investor FAQs so every new company
     // ships with a baseline deal page. Admins can edit, reorder, or remove
     // any of these afterwards via the Editorial section.
@@ -52,16 +63,64 @@ export class CompaniesService {
         }
       });
     } catch (err) {
-      // Never block company creation on FAQ seeding. Log and move on;
-      // admins can always click "Insert default questions" later.
       this.logger.warn(`Failed to seed default FAQs for ${company.id}: ${(err as Error).message}`);
     }
+
+    // Fire-and-forget: create a matching Medusa product and send version envelope.
+    this.notifyMedusaOfNewCompany(company).catch(() => {});
+    this.webhookService.syncToMedusa(company.id).catch(() => {});
+
     return company;
+  }
+
+  /**
+   * POST to Medusa to create a draft product linked to this company's ISIN.
+   * Non-blocking — failure is tolerated (admin can create the product manually).
+   */
+  private async notifyMedusaOfNewCompany(company: { id: string; isin: string; name: string; description?: string | null; sector?: string | null; industry?: string | null; listingStatus?: string }) {
+    const medusaUrl = process.env.MEDUSA_WEBHOOK_URL?.replace('/webhooks/calcula', '');
+    const secret = process.env.CALCULA_WEBHOOK_SECRET || process.env.MEDUSA_WEBHOOK_SECRET;
+    if (!medusaUrl || !secret) {
+      this.logger.warn('MEDUSA_WEBHOOK_URL or CALCULA_WEBHOOK_SECRET not set — skipping Medusa product creation');
+      return;
+    }
+
+    const url = `${medusaUrl}/webhooks/calcula/create-product`;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Webhook-Secret': secret },
+        body: JSON.stringify({
+          isin: company.isin,
+          name: company.name,
+          description: company.description ?? undefined,
+          sector: company.sector ?? undefined,
+          industry: company.industry ?? undefined,
+          listingStatus: company.listingStatus ?? undefined
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      if (!response.ok) {
+        this.logger.warn(`Medusa create-product returned ${response.status}: ${await response.text()}`);
+      } else {
+        const body = await response.json() as { created: boolean; product_id?: string; handle?: string };
+        this.logger.log(`Medusa product ${body.created ? 'created' : 'already exists'} for ${company.isin} (${body.handle ?? '-'})`);
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed to create Medusa product for ${company.isin}: ${err.message}`);
+    }
   }
 
   async update(id: string, input: UpdateCompanyInput) {
     await this.one(id);
-    return this.prisma.company.update({ where: { id }, data: input });
+    const company = await this.prisma.company.update({ where: { id }, data: input });
+    // Notify Medusa of metadata changes (name, description, sector, etc.)
+    // so the product title and calcula company_record stay in sync.
+    this.webhookService.syncToMedusa(company.id).catch(() => {});
+    return company;
   }
 
   async delete(id: string) {
@@ -406,7 +465,7 @@ export class CompaniesService {
         });
         const data = {
           companyId: company.id,
-          occurredAt: new Date((e.occurredAt as string) ?? Date.now()),
+          occurredAt: (() => { const d = new Date((e.occurredAt as string) || ''); return Number.isNaN(d.getTime()) ? new Date() : d; })(),
           category: (e.category as string) ?? 'N',
           sentiment: (e.sentiment as string) ?? null,
           impactScore: typeof e.impactScore === 'number' ? (e.impactScore as number) : null,
@@ -470,9 +529,14 @@ export class CompaniesService {
         if (period.fiscalYear == null) continue;
         const fiscalYear = period.fiscalYear as number;
         const fiscalQuarter = (period.fiscalQuarter as number | null) ?? null;
+        const safeDate = (v: unknown): Date => {
+          if (!v || v === '') return new Date();
+          const d = new Date(v as string);
+          return Number.isNaN(d.getTime()) ? new Date() : d;
+        };
         const periodData = {
-          periodStart: new Date((period.periodStart as string) ?? Date.now()),
-          periodEnd: new Date((period.periodEnd as string) ?? Date.now()),
+          periodStart: safeDate(period.periodStart),
+          periodEnd: safeDate(period.periodEnd),
           isAudited: Boolean(period.isAudited),
           scale: (period.scale as any) ?? null,
           currency: (period.currency as string) ?? null
@@ -551,17 +615,21 @@ export class CompaniesService {
       if (metricsSkipped) report.financialMetricsSkipped = metricsSkipped;
     }
 
-    // Bump every version so Medusa re-fetches on next sync.
-    await this.prisma.company.update({
-      where: { id: company.id },
-      data: {
-        statementsVersion: { increment: 1 },
-        priceVersion: { increment: 1 },
-        newsVersion: { increment: 1 },
-        editorialVersion: { increment: 1 },
-        contentUpdatedAt: new Date()
-      }
-    });
+    // Bump only the versions for data kinds that were actually present.
+    const versionBumps: Record<string, { increment: number }> = {};
+    if (report.financialPeriods || report.financialMetrics) versionBumps.statementsVersion = { increment: 1 };
+    if (report.priceHistory) versionBumps.priceVersion = { increment: 1 };
+    if (report.newsEvents) versionBumps.newsVersion = { increment: 1 };
+    if (report.overview || report.prosCons || report.faqItems || report.teamMembers || report.shareholders || report.competitors) {
+      versionBumps.editorialVersion = { increment: 1 };
+    }
+    if (report.details || report.valuations) versionBumps.profileVersion = { increment: 1 };
+    if (Object.keys(versionBumps).length) {
+      await this.prisma.company.update({
+        where: { id: company.id },
+        data: { ...versionBumps, contentUpdatedAt: new Date() }
+      });
+    }
 
     return { companyId: company.id, isin: company.isin, imported: report };
   }

@@ -54,5 +54,31 @@ createProductsWorkflow.hooks.productsCreated(
     } catch (err) {
       console.error("[validate-product-isin] calcula seed failed:", err)
     }
+
+    // 3) Create a matching company in Calcula's backend so financial data
+    //    can be entered immediately. Fire-and-forget — Calcula's create
+    //    endpoint is idempotent (returns existing if ISIN matches).
+    const calculaApiUrl = process.env.CALCULA_API_URL || "http://localhost:4100"
+    const webhookSecret = process.env.CALCULA_WEBHOOK_SECRET
+    if (calculaApiUrl && webhookSecret) {
+      try {
+        const resp = await fetch(`${calculaApiUrl}/api/companies`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Webhook-Secret": webhookSecret,
+          },
+          body: JSON.stringify({ name: companyName, isin }),
+          signal: AbortSignal.timeout(5000),
+        })
+        if (resp.ok) {
+          console.log(`[validate-product-isin] Calcula company created/found for ${isin}`)
+        } else {
+          console.warn(`[validate-product-isin] Calcula company create returned ${resp.status}`)
+        }
+      } catch (err: any) {
+        console.warn(`[validate-product-isin] Calcula company create failed: ${err.message}`)
+      }
+    }
   }
 )

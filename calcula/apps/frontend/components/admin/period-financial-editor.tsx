@@ -127,7 +127,13 @@ export function PeriodFinancialEditor({ companyId, periods }: Props) {
   const sortedPeriods = useMemo(() => [...periods].sort(comparePeriodsAsc), [periods]);
   const periodById = useMemo(() => new Map(periods.map((p) => [p.id, p])), [periods]);
 
-  // Default to last 2 periods whenever the period list changes and nothing valid is selected
+  // Stable period ID list — only triggers the default-selection effect when the
+  // actual set of period IDs changes, not when the parent re-renders with a new
+  // array reference containing the same IDs. This prevents year checkboxes from
+  // resetting when switching between BS / P&L / CF tabs.
+  const periodIdKey = useMemo(() => periods.map((p) => p.id).sort().join(','), [periods]);
+
+  // Default to all periods on first load; retain user selection across statement switches.
   useEffect(() => {
     setSelectedPeriodIds((prev) => {
       const available = new Set(periods.map((p) => p.id));
@@ -140,7 +146,8 @@ export function PeriodFinancialEditor({ companyId, periods }: Props) {
       });
       return sortedPeriods.map((p) => p.id);
     });
-  }, [periods, sortedPeriods, periodById]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodIdKey]);
 
   // Load line items + remainder mappings when statement type changes
   useEffect(() => {

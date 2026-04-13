@@ -53,7 +53,6 @@ export function EditorialHtmlPanels({ isin }: Props) {
 
   return (
     <HtmlSection
-      id="financial-insights"
       title="Financial Insights"
       subtitle="Analyst commentary on the latest financial trajectory"
       html={financialInsights}
