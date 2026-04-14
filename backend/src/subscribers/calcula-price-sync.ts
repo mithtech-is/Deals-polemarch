@@ -106,7 +106,7 @@ export default async function calculaPriceSync({
     )
   } catch (err: any) {
     // Never throw out of a subscriber — it'd dead-letter the event.
-    logger.error("[calcula-price-sync] failed:", err?.message || err, err?.stack)
+    logger.error("[calcula-price-sync] failed:", { message: err?.message || err, stack: err?.stack })
   }
 }
 
